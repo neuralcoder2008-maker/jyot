@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate-Adaptive Thermal Shelter Designer | SIH26051</title>
+    <meta name="description" content="Design, simulate, and optimize climate-resilient shelters with real-time thermal modeling and 3D digital twin.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js & Three.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Top Navigation -->
+        <header class="navbar">
+            <div class="nav-brand">
+                <div class="brand-badge">SIH26051</div>
+                <div class="brand-titles">
+                    <h1>ThermalShelter AI</h1>
+                    <span class="team-tag">Smart India Hackathon 2026 • Team Neural Coder</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu" id="navMenu">
+                <button class="nav-item active" data-section="all">Full Studio</button>
+                <button class="nav-item" data-section="climate-section">Location & Climate</button>
+                <button class="nav-item" data-section="config-section">Shelter Config</button>
+                <button class="nav-item" data-section="simulation-section">Simulation & 3D</button>
+                <button class="nav-item" data-section="optimization-section">Optimization</button>
+                <button class="nav-item" data-section="report-section">Project Report</button>
+            </nav>
+
+            <div class="nav-user">
+                <button id="saveDesignBtn" class="header-action-btn" title="Save this design">
+                    <span>💾 Save Design</span>
+                </button>
+                <div class="user-info">
+                    <span class="user-name" id="displayUserName">Lead Architect</span>
+                    <span class="user-role">SIH Evaluator Mode</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn" title="Sign out to login page">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Sign out</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Hero / Quick Status Banner -->
+            <section class="status-banner">
+                <div class="banner-text">
+                    <div class="banner-badge-row">
+                        <span class="sih-tag">SIH 2026 Presentation Prototype</span>
+                        <span class="sih-tag-sub">Team: Neural Coder</span>
+                    </div>
+                    <h2>Climate-Adaptive Thermal Shelter Designer</h2>
+                    <p>Area-specific shelter planning powered by microclimate modeling, 3D digital twin, and passive thermal engineering.</p>
+                </div>
+                <div class="banner-actions-col">
+                    <button id="startDesigningBtn" class="primary-btn pulse-action">
+                        <span>🚀 Start Designing / Examiner Demo</span>
+                    </button>
+                    <div class="quick-stats-row">
+                        <div class="stat-pill">
+                            <span class="stat-dot green"></span>
+                            <span class="stat-label">Standards:</span>
+                            <strong>EnergyPlus • ASHRAE 55</strong>
+                        </div>
+                        <div class="stat-pill">
+                            <span class="stat-dot blue"></span>
+                            <span class="stat-label">Active:</span>
+                            <strong id="bannerRegion">Shimla, HP (Cold High Altitude)</strong>
+                        </div>
+                        <div class="stat-pill">
+                            <span class="stat-dot amber"></span>
+                            <span class="stat-label">Passive Comfort:</span>
+                            <strong id="bannerComfort">92% Optimal</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Examiner Workflow Stepper Chain (Section 6 of Project Specification) -->
+            <section class="workflow-stepper-card">
+                <div class="stepper-header">
+                    <div class="stepper-title-row">
+                        <span class="stepper-icon">⚡</span>
+                        <strong>Website Demonstration Workflow Chain:</strong>
+                        <span class="stepper-desc">Click any step to inspect the end-to-end design sequence</span>
+                    </div>
+                    <span class="sim-badge">Simulated & Estimated Data (ASHRAE 55)</span>
+                </div>
+                <div class="stepper-track" id="workflowStepper">
+                    <div class="step-node active" data-target="climate-section">
+                        <span class="node-num">1</span>
+                        <span class="node-name">Location Selection</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="climate-section">
+                        <span class="node-num">2</span>
+                        <span class="node-name">Weather Data (Open-Meteo/NASA)</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="config-section">
+                        <span class="node-num">3</span>
+                        <span class="node-name">Shelter Configuration</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="simulation-section">
+                        <span class="node-num">4</span>
+                        <span class="node-name">3D Digital Twin</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="simulation-section">
+                        <span class="node-num">5</span>
+                        <span class="node-name">Thermal Simulation</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="optimization-section">
+                        <span class="node-num">6</span>
+                        <span class="node-name">Optimization Engine</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="optimization-section">
+                        <span class="node-num">7</span>
+                        <span class="node-name">Design Comparison</span>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step-node" data-target="report-section">
+                        <span class="node-num">8</span>
+                        <span class="node-name">Report Generation</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Grid Layout -->
+            <div class="dashboard-grid">
+                
+                <!-- Left Column: Controls & Configuration -->
+                <div class="grid-column side-controls">
+                    
+                    <!-- Location & Climate Card -->
+                    <div class="glass-card feature-section" id="climate-section">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">🌍</div>
+                                <div>
+                                    <h3>Location & Microclimate</h3>
+                                    <p class="sub">Open-Meteo & NASA POWER climate interface</p>
+                                </div>
+                            </div>
+                            <span class="live-status-chip" id="weatherSourceBadge">Demo Data Feed</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <label for="locationSelect">Select Region or Climate API Feed</label>
+                                <select id="locationSelect" class="form-control">
+                                    <option value="shimla" selected>Shimla (Cold / High Altitude Mountains)</option>
+                                    <option value="jodhpur">Jodhpur (Hot & Arid Desert)</option>
+                                    <option value="chennai">Chennai (Warm & Humid Coastal)</option>
+                                    <option value="nagpur">Nagpur (Composite / Subtropical Plain)</option>
+                                    <option value="leh">Leh, Ladakh (Cold Arid Extreme Alpine)</option>
+                                    <option value="nasa">NASA POWER API (Surface Solar & Meteorology Sync)</option>
+                                    <option value="custom">Custom Location (Live Open-Meteo API)</option>
+                                </select>
+                            </div>
+
+                            <div id="customCoordRow" class="custom-coord-row" style="display: none;">
+                                <div class="coord-inputs">
+                                    <input type="number" id="customLat" placeholder="Latitude (e.g. 28.61)" step="0.01" value="28.61" class="form-control">
+                                    <input type="number" id="customLon" placeholder="Longitude (e.g. 77.20)" step="0.01" value="77.20" class="form-control">
+                                </div>
+                                <button id="fetchLiveWeatherBtn" class="small-btn">Fetch Open-Meteo</button>
+                            </div>
+
+                            <div class="climate-telemetry-grid">
+                                <div class="telemetry-box">
+                                    <span class="telem-label">Outdoor Ambient</span>
+                                    <span class="telem-val" id="outTemp">8.4 °C</span>
+                                    <span class="telem-sub" id="outTempRange">Min: 1.0°C | Max: 14.0°C</span>
+                                </div>
+                                <div class="telemetry-box">
+                                    <span class="telem-label">Relative Humidity</span>
+                                    <span class="telem-val" id="outHumidity">64 %</span>
+                                    <span class="telem-sub">Psychrometric RH</span>
+                                </div>
+                                <div class="telemetry-box">
+                                    <span class="telem-label">Solar Irradiance</span>
+                                    <span class="telem-val" id="solarRad">680 W/m²</span>
+                                    <span class="telem-sub">Direct Normal DNI</span>
+                                </div>
+                                <div class="telemetry-box">
+                                    <span class="telem-label">Prevailing Wind</span>
+                                    <span class="telem-val" id="windSpeed">3.6 m/s NE</span>
+                                    <span class="telem-sub">Ventilation Potential</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shelter Dimensions & Materials -->
+                    <div class="glass-card feature-section" id="config-section">
+                        <div class="card-header">
+                            <div class="header-icon">📐</div>
+                            <div>
+                                <h3>Shelter Configuration</h3>
+                                <p class="sub">Dimensions, envelope materials, insulation & passive features</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Length (m)</span>
+                                    <strong id="valLength">6.0 m</strong>
+                                </div>
+                                <input type="range" id="paramLength" min="3" max="15" step="0.5" value="6.0" class="range-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Width (m)</span>
+                                    <strong id="valWidth">4.0 m</strong>
+                                </div>
+                                <input type="range" id="paramWidth" min="3" max="12" step="0.5" value="4.0" class="range-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Height (m)</span>
+                                    <strong id="valHeight">3.0 m</strong>
+                                </div>
+                                <input type="range" id="paramHeight" min="2.2" max="5.0" step="0.1" value="3.0" class="range-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Orientation (Degrees from North)</span>
+                                    <strong id="valOrientation">180° (South-Facing Sun Optimum)</strong>
+                                </div>
+                                <input type="range" id="paramOrientation" min="0" max="360" step="15" value="180" class="range-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Sun Simulation Time of Day</span>
+                                    <strong id="valSunHour">13:00 (Peak Irradiance)</strong>
+                                </div>
+                                <input type="range" id="paramSunHour" min="6" max="18" step="0.5" value="13.0" class="range-slider">
+                            </div>
+
+                            <div class="form-row">
+                                <label for="wallMaterial">Wall Construction & Thermal Mass</label>
+                                <select id="wallMaterial" class="form-control">
+                                    <option value="pcm_biowax">Phase-Change Material (PCM) Bio-Wax Composite (U=0.18 W/m²K, High Latent Storage)</option>
+                                    <option value="aerated_concrete" selected>Autoclaved Aerated Concrete (AAC) + 50mm Rockwool (U=0.28 W/m²K)</option>
+                                    <option value="rammed_earth">Stabilized Rammed Earth / CSEB (High Thermal Mass, U=0.42 W/m²K)</option>
+                                    <option value="timber_frame">Engineered Timber Frame + Hempcrete (Low Carbon, U=0.22 W/m²K)</option>
+                                    <option value="brick_cavity">Double Brick Cavity + Expanded Polystyrene (U=0.35 W/m²K)</option>
+                                    <option value="galvanized_sheet">Baseline Galvanized Sheet Metal (Uninsulated, U=5.8 W/m²K)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label for="roofType">Roof Construction & Thermal Barrier</label>
+                                <select id="roofType" class="form-control">
+                                    <option value="green_roof" selected>Extensive Green Sedum Roof + Substrate Insulation</option>
+                                    <option value="cool_roof">High-Albedo Cool Roof Coating (Solar Reflectance 0.88)</option>
+                                    <option value="sloped_solar">South-Pitched Roof with Building-Integrated Solar PV</option>
+                                    <option value="corrugated_iron">Uninsulated Corrugated Tin / Sheet Roof (Baseline)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label for="glazingRatio">Window-to-Wall Ratio (Glazing Ratio)</label>
+                                <select id="glazingRatio" class="form-control">
+                                    <option value="15">15% (Triple-Glazed Low-E, Alpine Cold Defense)</option>
+                                    <option value="25" selected>25% (Double-Glazed Argon Filled, Balanced)</option>
+                                    <option value="40">40% (Direct Solar Gain Greenhouse Glazing)</option>
+                                </select>
+                            </div>
+
+                            <button id="runSimBtn" class="primary-btn pulse-action">
+                                <span>⚡ Run Thermal Simulation</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Saved Designs Drawer -->
+                    <div class="glass-card">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">📂</div>
+                                <div>
+                                    <h3>Saved Design Configurations</h3>
+                                    <p class="sub">Stored in local architectural vault</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="savedDesignsList" class="saved-designs-list">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: 3D Visualization, Simulation Charts & Optimization -->
+                <div class="grid-column main-visualizer">
+                    
+                    <!-- 3D Shelter Viewer -->
+                    <div class="glass-card feature-section" id="simulation-section">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">🧊</div>
+                                <div>
+                                    <h3>Interactive 3D Shelter Digital Twin</h3>
+                                    <p class="sub">High-fidelity architectural simulation with live solar shadow tracking & wind vectors</p>
+                                </div>
+                            </div>
+                            <div class="canvas-tags">
+                                <span class="tag">Left Click: Orbit</span>
+                                <span class="tag">Scroll: Zoom</span>
+                                <span class="tag">Right Click: Pan</span>
+                            </div>
+                        </div>
+
+                        <!-- 3D Modes & Control Toolbar -->
+                        <div class="three-toolbar">
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Visualization Mode:</span>
+                                <div class="mode-buttons" id="viewModeButtons">
+                                    <button class="mode-btn active" data-mode="realistic" title="Realistic materials and sunlight">🏢 Realistic</button>
+                                    <button class="mode-btn" data-mode="thermal" title="Infrared thermal heat flux heatmap">🔥 Thermal Heatmap</button>
+                                    <button class="mode-btn" data-mode="solar" title="Solar radiation exposure analysis">☀️ Solar Exposure</button>
+                                    <button class="mode-btn" data-mode="xray" title="Translucent envelope showing interior thermal mass">🩻 X-Ray Structure</button>
+                                    <button class="mode-btn" data-mode="airflow" title="Animated aerodynamic cross-ventilation particles">💨 CFD Airflow</button>
+                                </div>
+                            </div>
+
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Elements:</span>
+                                <div class="toggle-chips">
+                                    <label class="chip-toggle">
+                                        <input type="checkbox" id="toggleDimensions" checked>
+                                        <span>📏 3D Dimensions</span>
+                                    </label>
+                                    <label class="chip-toggle">
+                                        <input type="checkbox" id="toggleExploded">
+                                        <span>🏗️ Roof Lift (Inspect)</span>
+                                    </label>
+                                    <label class="chip-toggle">
+                                        <input type="checkbox" id="toggleEnvironment" checked>
+                                        <span>🌳 Site Context</span>
+                                    </label>
+                                    <label class="chip-toggle">
+                                        <input type="checkbox" id="toggleWindParticles" checked>
+                                        <span>💨 Wind Vectors</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Camera:</span>
+                                <div class="cam-presets">
+                                    <button class="cam-btn" id="camIsometric" title="Isometric Perspective">Perspective</button>
+                                    <button class="cam-btn" id="camSouth" title="South Solar Elevation">South</button>
+                                    <button class="cam-btn" id="camTop" title="Roof / Top Plan">Top Plan</button>
+                                    <button class="cam-btn" id="camReset" title="Reset View">Reset</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body no-padding">
+                            <div id="threeContainer" class="three-canvas-container">
+                                <div class="canvas-overlay-badges">
+                                    <div class="overlay-item">
+                                        <span class="dot yellow"></span>
+                                        <span id="overlaySun">Sun: Azimuth 180°, Elev 45°</span>
+                                    </div>
+                                    <div class="overlay-item">
+                                        <span class="dot cyan"></span>
+                                        <span id="overlayWind">Wind: 3.6 m/s NE</span>
+                                    </div>
+                                    <div class="overlay-item">
+                                        <span class="dot green"></span>
+                                        <span id="overlayDimensions">Envelope: 6.0m × 4.0m × 3.0m</span>
+                                    </div>
+                                    <div class="overlay-item" id="overlayModeIndicator">
+                                        <span class="dot purple"></span>
+                                        <span id="modeText">Mode: Realistic Architectural</span>
+                                    </div>
+                                </div>
+
+                                <!-- Thermal Legend Overlay (Visible in Thermal & Solar Modes) -->
+                                <div class="thermal-legend" id="thermalLegend" style="display: none;">
+                                    <span class="legend-title">Surface Heat Flux</span>
+                                    <div class="legend-bar"></div>
+                                    <div class="legend-labels">
+                                        <span>Cold (3°C)</span>
+                                        <span>Comfort (21°C)</span>
+                                        <span>Hot (42°C)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thermal Simulation Chart -->
+                    <div class="glass-card">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">📈</div>
+                                <div>
+                                    <h3>24-Hour Diurnal Thermal Simulation</h3>
+                                    <p class="sub">Simulated hourly outdoor ambient vs indoor calculated temperature</p>
+                                </div>
+                            </div>
+                            <div class="comfort-status-badge">
+                                <span class="status-indicator comfortable"></span>
+                                <span id="comfortLabel">ASHRAE 55: <strong>92% In Comfort Band</strong></span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrapper">
+                                <canvas id="thermalChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Heat Balance Breakdown Chart -->
+                    <div class="glass-card">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">⚖️</div>
+                                <div>
+                                    <h3>Hourly Heat Balance Breakdown (W/m²)</h3>
+                                    <p class="sub">Heat gain vs heat loss components (Conduction, Solar, Infiltration, Thermal Mass Lag)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrapper heat-balance-chart-wrapper">
+                                <canvas id="heatBalanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison & Recommendation Module -->
+                    <div class="glass-card feature-section" id="optimization-section">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">🎯</div>
+                                <div>
+                                    <h3>Optimization Engine & Design Comparison</h3>
+                                    <p class="sub">Benchmark: Baseline Standard vs. Neural Coder Climate-Adaptive Configuration</p>
+                                </div>
+                            </div>
+                            <button id="optimizeAutoBtn" class="primary-btn small">
+                                <span>✨ Run AI Multi-Objective Optimization</span>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="comparison-table-wrapper">
+                                <table class="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Design Performance Metric</th>
+                                            <th>Conventional Baseline</th>
+                                            <th>Proposed Adaptive Shelter</th>
+                                            <th>Net Impact & Gain</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Indoor Minimum Temp</strong></td>
+                                            <td class="text-danger" id="tblBaseMin">4.2 °C (Severe Cold)</td>
+                                            <td class="text-success" id="tblAdaptMin">16.8 °C (ASHRAE Comfort)</td>
+                                            <td><span class="badge-gain" id="tblGainMin">+12.6 °C Passive Lift</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Diurnal Temp Fluctuation</strong></td>
+                                            <td id="tblBaseSwing">18.5 °C Thermal Swing</td>
+                                            <td id="tblAdaptSwing" class="text-success">5.2 °C Dampened Buffer</td>
+                                            <td><span class="badge-gain" id="tblGainSwing">72% Thermal Damping</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Annual HVAC Demand</strong></td>
+                                            <td id="tblBaseEnergy">145 kWh/m²/yr</td>
+                                            <td id="tblAdaptEnergy" class="text-success">38 kWh/m²/yr</td>
+                                            <td><span class="badge-gain" id="tblGainEnergy">-74% Energy Reduction</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Embodied Carbon Index</strong></td>
+                                            <td id="tblBaseCarbon">410 kg CO₂e/m²</td>
+                                            <td id="tblAdaptCarbon" class="text-success">175 kg CO₂e/m²</td>
+                                            <td><span class="badge-gain" id="tblGainCarbon">57% Carbon Abated</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Sustainability & Value Impact Indicators (Section 13 of SIH Report) -->
+                            <div class="sustainability-impact-grid">
+                                <div class="impact-card">
+                                    <div class="impact-icon">🛡️</div>
+                                    <div class="impact-details">
+                                        <span class="impact-title">Vulnerable Population Protection</span>
+                                        <strong class="impact-value text-success">Grade A+ (Safe Envelope)</strong>
+                                        <span class="impact-desc">Protects displaced & mountain communities from hypothermia extreme events</span>
+                                    </div>
+                                </div>
+                                <div class="impact-card">
+                                    <div class="impact-icon">💰</div>
+                                    <div class="impact-details">
+                                        <span class="impact-title">Passive Cooling Economics</span>
+                                        <strong class="impact-value text-success">₹18,400 / yr Saved</strong>
+                                        <span class="impact-desc">Reduction in active diesel generation & mechanical cooling expenses</span>
+                                    </div>
+                                </div>
+                                <div class="impact-card">
+                                    <div class="impact-icon">⚡</div>
+                                    <div class="impact-details">
+                                        <span class="impact-title">Passive Thermal Autonomy</span>
+                                        <strong class="impact-value text-success">88% Zero-Power Hours</strong>
+                                        <span class="impact-desc">Comfort maintained through orientation, solar capture & envelope mass</span>
+                                    </div>
+                                </div>
+                                <div class="impact-card">
+                                    <div class="impact-icon">🌱</div>
+                                    <div class="impact-details">
+                                        <span class="impact-title">Ecological Material Index</span>
+                                        <strong class="impact-value text-success">64% Bio-Regenerative</strong>
+                                        <span class="impact-desc">Low embodied carbon utilizing AAC, sedum green roof & bio-based PCMs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formal Technical Report Section -->
+                    <div class="glass-card feature-section" id="report-section">
+                        <div class="card-header space-between">
+                            <div class="header-with-badge">
+                                <div class="header-icon">📑</div>
+                                <div>
+                                    <h3>Project Evaluation & Technical Report</h3>
+                                    <p class="sub">SIH26051 Climate-Adaptive Thermal Shelter Designer Dossier</p>
+                                </div>
+                            </div>
+                            <button id="exportReportBtn" class="primary-btn small">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Export / Print Official Report</span>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-summary-box">
+                                <h4>Executive Technical Dossier</h4>
+                                <p><strong>Problem Statement:</strong> SIH26051 – Software Based Model Development for Design of Area Specific Shelter for Thermal Comfort Maintenance</p>
+                                <p><strong>Engineering Team:</strong> Neural Coder | <strong>Platform:</strong> Climate-Adaptive Thermal Shelter Designer</p>
+                                <hr class="report-divider">
+                                <div class="report-grid">
+                                    <div>
+                                        <strong>Target Climate:</strong>
+                                        <p id="repLocation">Shimla, Himachal Pradesh</p>
+                                    </div>
+                                    <div>
+                                        <strong>Envelope Dimensions:</strong>
+                                        <p id="repDimensions">6.0m (L) × 4.0m (W) × 3.0m (H)</p>
+                                    </div>
+                                    <div>
+                                        <strong>Envelope Materials:</strong>
+                                        <p id="repMaterials">AAC Blocks + Rockwool, Green Roof</p>
+                                    </div>
+                                    <div>
+                                        <strong>Thermal Compliance:</strong>
+                                        <p id="repCompliance" class="text-success">ASHRAE Standard 55 Compliant (92%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Optimization Modal -->
+    <div id="optimizationModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>✨ AI Optimization Engine Recommendations</h3>
+                <button class="modal-close" id="closeOptModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>The optimization engine evaluated <strong>128 parametric combinations</strong> across orientation, window ratio, insulation depth, and roof thermal mass for the active climate:</p>
+                <div class="candidate-cards">
+                    <div class="candidate-card best">
+                        <div class="candidate-badge">Top Recommendation (Rank #1)</div>
+                        <h4>Passive Solar & High Damping Configuration</h4>
+                        <ul>
+                            <li><strong>Orientation:</strong> 180° (True South for Direct Solar Capture)</li>
+                            <li><strong>Envelope:</strong> AAC Blocks with 60mm Exterior Rockwool</li>
+                            <li><strong>Roof:</strong> Extensive Green Roof (80mm Soil Substrate)</li>
+                            <li><strong>Window Ratio:</strong> 25% High-Performance Double Glazed</li>
+                            <li><strong>Calculated Thermal Lift:</strong> +13.2 °C during winter night minima</li>
+                        </ul>
+                        <button id="applyOptCandidateBtn" class="primary-btn">Apply This Configuration</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Simulation updated successfully!</div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

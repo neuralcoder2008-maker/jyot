@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate-Adaptive Thermal Shelter Designer | Login</title>
+    <meta name="description" content="Login to the Neural Coder Climate-Adaptive Thermal Shelter Designer platform.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-container"></div>
+    <main class="login-wrapper">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo">
+                    <span class="logo-icon">☀️</span>
+                    <h1>Neural Coder</h1>
+                </div>
+                <h2>Thermal Shelter Designer</h2>
+                <p>Welcome back. Please enter your details to continue.</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input type="email" id="email" name="email" placeholder="name@company.com" required>
+                    <span class="error-message" id="emailError"></span>
+                </div>
+                
+                <div class="form-group">
+                    <div class="password-label-row">
+                        <label for="password">Password</label>
+                        <a href="#" class="forgot-password">Forgot password?</a>
+                    </div>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                    <span class="error-message" id="passwordError"></span>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Remember for 30 days</label>
+                </div>
+                
+                <button type="submit" id="submitBtn" class="submit-btn">
+                    <span class="btn-text">Sign in to Platform</span>
+                    <span class="btn-loader"></span>
+                </button>
+
+                <button type="button" id="demoBtn" class="demo-btn">
+                    <span>⚡ Quick Demo Access (1-Click)</span>
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <p>Don't have an account? <a href="#" id="signupLink" class="signup-link">Sign up</a></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotModal" class="login-modal-overlay">
+        <div class="login-modal-card">
+            <h3>Reset Password</h3>
+            <p>Enter your verified email to receive an instant access recovery token:</p>
+            <input type="email" id="resetEmail" class="modal-input" placeholder="name@company.com">
+            <div class="modal-actions">
+                <button type="button" id="closeForgotModal" class="cancel-modal-btn">Cancel</button>
+                <button type="button" id="sendResetBtn" class="confirm-modal-btn">Send Reset Link</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign Up Modal -->
+    <div id="signupModal" class="login-modal-overlay">
+        <div class="login-modal-card">
+            <h3>Create Neural Coder Account</h3>
+            <p>Join the Climate-Adaptive Shelter research network:</p>
+            <input type="text" id="regName" class="modal-input" placeholder="Full Name (e.g. Jyot Researcher)">
+            <input type="email" id="regEmail" class="modal-input" placeholder="Email Address">
+            <input type="password" id="regPass" class="modal-input" placeholder="Create Password (min 6 chars)">
+            <div class="modal-actions">
+                <button type="button" id="closeSignupModal" class="cancel-modal-btn">Cancel</button>
+                <button type="button" id="createAccountBtn" class="confirm-modal-btn">Register & Access</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
