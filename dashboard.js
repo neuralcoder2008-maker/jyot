@@ -985,7 +985,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 5. Detailed Practical Interior
         // Interior Partition Wall (Bathroom enclosure in NW corner)
-        const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 });
+        // Give the interior an accent color! Deep Navy Blue
+        const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.9 });
         const partitionZ = new THREE.Mesh(new THREE.BoxGeometry(1.5, h, 0.1), interiorWallMat);
         partitionZ.position.set(-l/2 + 1.5/2 + pSize, h/2 + 0.45, -w/2 + 1.5 + pSize);
         partitionZ.castShadow = true;
@@ -1014,6 +1015,26 @@ document.addEventListener('DOMContentLoaded', () => {
         sofaBack.position.set(-l/4 + 0.5, 0.8/2 + 0.45, -0.05);
         sofaBack.castShadow = true;
         shelterBody.add(sofaBack);
+
+        // Modern Coffee Table in front of Sofa
+        const coffeeTableMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.8 }); // Glass/Steel look
+        const coffeeTable = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.6), coffeeTableMat);
+        coffeeTable.position.set(-l/4 + 0.5, 0.25/2 + 0.45, 0.9);
+        coffeeTable.castShadow = true;
+        shelterBody.add(coffeeTable);
+
+        // Flat Screen TV mounted on the partition wall facing the sofa
+        const tvMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1, metalness: 0.8 });
+        const tvGeo = new THREE.BoxGeometry(0.05, 0.8, 1.4);
+        const tv = new THREE.Mesh(tvGeo, tvMat);
+        tv.position.set(-l/2 + 1.5 + pSize + 0.08, h/2 + 0.45, 0.2); // Mounted on PartitionX
+        shelterBody.add(tv);
+        
+        // TV Screen glow (simulating it's turned on)
+        const screenMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // Bright blue screen
+        const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.75, 1.35), screenMat);
+        tvScreen.position.set(0.03, 0, 0);
+        tv.add(tvScreen);
 
         // 5. Minimalist Interior
         const trombeGeo = new THREE.BoxGeometry(l * 0.4, h * 0.8, 0.3);
