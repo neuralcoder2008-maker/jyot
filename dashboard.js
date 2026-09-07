@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sunMesh = new THREE.Group();
         
         // 1. Solid physical core
-        const coreGeo = new THREE.SphereGeometry(0.08, 32, 32); // Tiny: 0.2 → 0.08
+        const coreGeo = new THREE.SphereGeometry(0.6, 32, 32); // Normal realistic size
         const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const core = new THREE.Mesh(coreGeo, coreMat);
         sunMesh.add(core);
@@ -559,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             depthWrite: false 
         });
         const flare = new THREE.Sprite(sunFlareMat);
-        flare.scale.set(3, 3, 1); // Tiny: 6 → 3
+        flare.scale.set(22, 22, 1); // Normal realistic corona
         sunMesh.add(flare);
         
         scene.add(sunMesh);
