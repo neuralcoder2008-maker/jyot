@@ -485,17 +485,27 @@ document.addEventListener('DOMContentLoaded', () => {
         sunLight.shadow.camera.bottom = -d;
         scene.add(sunLight);
 
-        // Sun Marker Sphere
-        const sunGeo = new THREE.SphereGeometry(1.2, 32, 32);
-        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        // Realistic Sun with Multi-layered Bloom/Corona
+        // Core: Blinding white/yellow center
+        const sunGeo = new THREE.SphereGeometry(1.4, 32, 32);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         sunMesh = new THREE.Mesh(sunGeo, sunMat);
         scene.add(sunMesh);
 
-        // Add a subtle bloom/glow aura to the sun
-        const auraGeo = new THREE.SphereGeometry(1.8, 32, 32);
-        const auraMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
-        const sunAura = new THREE.Mesh(auraGeo, auraMat);
-        sunMesh.add(sunAura);
+        // Corona Layer 1: Intense bright yellow, additive
+        const corona1Geo = new THREE.SphereGeometry(1.8, 32, 32);
+        const corona1Mat = new THREE.MeshBasicMaterial({ color: 0xffeebb, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
+        sunMesh.add(new THREE.Mesh(corona1Geo, corona1Mat));
+
+        // Corona Layer 2: Orange gradient spread, additive
+        const corona2Geo = new THREE.SphereGeometry(3.5, 32, 32);
+        const corona2Mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+        sunMesh.add(new THREE.Mesh(corona2Geo, corona2Mat));
+
+        // Corona Layer 3: Giant faint atmospheric halo, additive
+        const corona3Geo = new THREE.SphereGeometry(8.0, 32, 32);
+        const corona3Mat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending });
+        sunMesh.add(new THREE.Mesh(corona3Geo, corona3Mat));
 
         // Solar Trajectory Arc (Sky Path)
         buildSolarArc();
