@@ -465,16 +465,16 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
         // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Softer ambient
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15); // Very dim ambient
         scene.add(ambientLight);
 
         // Hemisphere light for realistic sky/ground bounce lighting
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.2); // Very dim
         hemiLight.position.set(0, 20, 0);
         scene.add(hemiLight);
 
         // Directional Sun Light (Main Key Light)
-        sunLight = new THREE.DirectionalLight(0xfffbeb, 1.8);
+        sunLight = new THREE.DirectionalLight(0xfffbeb, 0.55); // Further reduced → 0.55
         sunLight.position.set(12, 20, 12);
         sunLight.castShadow = true;
         // High resolution shadow mapping
@@ -529,8 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ultra-Realistic Sun Group (Solid Core + Optical Flare)
         sunMesh = new THREE.Group();
         
-        // 1. Solid physical core (blinding white)
-        const coreGeo = new THREE.SphereGeometry(1.5, 32, 32);
+        // 1. Solid physical core
+        const coreGeo = new THREE.SphereGeometry(0.08, 32, 32); // Tiny: 0.2 → 0.08
         const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const core = new THREE.Mesh(coreGeo, coreMat);
         sunMesh.add(core);
@@ -541,11 +541,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = 512;
         const context = canvas.getContext('2d');
         const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-        gradient.addColorStop(0.05, 'rgba(255, 255, 200, 1.0)');
-        gradient.addColorStop(0.15, 'rgba(255, 170, 0, 0.8)');
-        gradient.addColorStop(0.4, 'rgba(255, 80, 0, 0.3)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0, 'rgba(255, 240, 180, 0.5)');
+        gradient.addColorStop(0.1, 'rgba(255, 200, 80, 0.3)');
+        gradient.addColorStop(0.3, 'rgba(255, 150, 0, 0.12)');
+        gradient.addColorStop(0.6, 'rgba(200, 80, 0, 0.04)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Very faint corona
         
         context.fillStyle = gradient;
         context.fillRect(0, 0, 512, 512);
@@ -559,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             depthWrite: false 
         });
         const flare = new THREE.Sprite(sunFlareMat);
-        flare.scale.set(60, 60, 1); // Massive atmospheric scatter
+        flare.scale.set(3, 3, 1); // Tiny: 6 → 3
         sunMesh.add(flare);
         
         scene.add(sunMesh);
