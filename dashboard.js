@@ -1005,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sofaBack.castShadow = true;
         shelterBody.add(sofaBack);
 
+        // 5. Minimalist Interior
         const trombeGeo = new THREE.BoxGeometry(l * 0.4, h * 0.8, 0.3);
         const trombeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
         const trombeWall = new THREE.Mesh(trombeGeo, trombeMat);
@@ -1086,7 +1087,50 @@ document.addEventListener('DOMContentLoaded', () => {
         step2.receiveShadow = true;
         shelterBody.add(step2);
 
-        // 6. Dimensions and Compass
+        // 6. Final Touch-Ups (Environment Context & Warm Lighting)
+        // Add a warm interior glow (PointLight) so the house looks alive at twilight
+        const interiorLight = new THREE.PointLight(0xffedd5, 1.5, 15);
+        interiorLight.position.set(0, h - 0.5, 0);
+        shelterBody.add(interiorLight);
+
+        // Landscaping: Yard Base
+        const yardMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.95 }); // Deep lush grass
+        const yardGeo = new THREE.CylinderGeometry(12, 12, 0.1, 32);
+        const yard = new THREE.Mesh(yardGeo, yardMat);
+        yard.position.set(0, -0.05, 0);
+        yard.receiveShadow = true;
+        shelterBody.add(yard);
+
+        // Landscaping: Stone Pathway leading to steps
+        const pathMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 1.0 });
+        const pathGeo = new THREE.PlaneGeometry(1.6, 6);
+        const path = new THREE.Mesh(pathGeo, pathMat);
+        path.rotation.x = -Math.PI / 2;
+        path.position.set(0, 0.01, w/2 + platformOverhang + 3);
+        path.receiveShadow = true;
+        shelterBody.add(path);
+
+        // Landscaping: Decorative Procedural Trees
+        function createTree(x, z, scale) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.0), new THREE.MeshStandardMaterial({color: 0x3e2723}));
+            trunk.position.y = 0.5;
+            trunk.castShadow = true;
+            tree.add(trunk);
+            const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), new THREE.MeshStandardMaterial({color: 0x166534, flatShading: true}));
+            leaves.position.y = 1.2;
+            leaves.castShadow = true;
+            tree.add(leaves);
+            tree.position.set(x, 0, z);
+            tree.scale.set(scale, scale, scale);
+            return tree;
+        }
+        
+        shelterBody.add(createTree(-6, w/2 + 2, 2.5)); // Large tree on left
+        shelterBody.add(createTree(5, w/2 + 4, 1.8));  // Medium tree on right
+        shelterBody.add(createTree(-4, -w/2 - 3, 2.0)); // Tree in back
+
+        // 7. Dimensions and Compass
         if (toggleDimensions.checked) {
             buildDimensionLines(l, w, h);
         }
