@@ -433,6 +433,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let shelterRoot, shelterBody, shelterRoof, dimensionGroup, environmentGroup, particleSystem;
     let sunMesh, sunLight, sunPathLine, groundMesh, compassGroup;
     let particlePositions, particleCount = 180;
+    
+    // Interactive elements
+    let doorGroup; 
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
 
     const container = document.getElementById('threeContainer');
 
@@ -550,6 +555,21 @@ document.addEventListener('DOMContentLoaded', () => {
             renderer.setSize(newW, newH);
         });
 
+        // Door interaction
+        renderer.domElement.addEventListener('pointerdown', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            
+            if (doorGroup) {
+                const intersects = raycaster.intersectObjects(doorGroup.children, true);
+                if (intersects.length > 0) {
+                    doorGroup.userData.isOpen = !doorGroup.userData.isOpen;
+                }
+            }
+        });
+
         // Main Animation Loop
         let clock = new THREE.Clock();
         function animate() {
@@ -558,6 +578,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const delta = clock.getDelta();
             animateWindParticles(delta);
+
+            if (doorGroup) {
+                const targetRot = doorGroup.userData.isOpen ? -Math.PI / 2.2 : 0;
+                doorGroup.rotation.y += (targetRot - doorGroup.rotation.y) * 6 * delta;
+            }
 
             renderer.render(scene, camera);
         }
@@ -929,18 +954,26 @@ document.addEventListener('DOMContentLoaded', () => {
             shelterBody.add(glassHeader);
         }
 
-        // Heavy Modern Wood Front Door
+        // Heavy Modern Wood Front Door (Interactive)
+        doorGroup = new THREE.Group();
+        // Position doorGroup at the hinge (left side of the door opening)
+        doorGroup.position.set(-doorWidth/2, 0.45, w/2 - wallThickness/2);
+        doorGroup.userData.isOpen = false;
+        
         const doorLeafGeo = new THREE.BoxGeometry(doorWidth - 0.05, doorHeight, 0.15);
         const doorLeaf = new THREE.Mesh(doorLeafGeo, mats.doorMat);
-        doorLeaf.position.set(0, doorHeight/2 + 0.45, w/2 - wallThickness/2);
+        // Offset the leaf so it swings around the hinge
+        doorLeaf.position.set(doorWidth/2, doorHeight/2, 0);
         doorLeaf.castShadow = true;
-        shelterBody.add(doorLeaf);
+        doorGroup.add(doorLeaf);
 
         // Large vertical modern handle
         const handleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.1 });
         const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), handleMat);
-        handle.position.set(doorWidth/2 - 0.15, doorHeight/2 + 0.45, w/2 - wallThickness/2 + 0.12);
-        shelterBody.add(handle);
+        handle.position.set(doorWidth - 0.15, doorHeight/2, 0.12);
+        doorGroup.add(handle);
+
+        shelterBody.add(doorGroup);
 
         // 4. Clean Flat Roof Slab (Hovering effect)
         const roofThickness = 0.35;
