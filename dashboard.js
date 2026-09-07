@@ -460,18 +460,25 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
         // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Softer ambient
         scene.add(ambientLight);
 
-        // Directional Sun Light
-        sunLight = new THREE.DirectionalLight(0xfffbeb, 1.5);
+        // Hemisphere light for realistic sky/ground bounce lighting
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        hemiLight.position.set(0, 20, 0);
+        scene.add(hemiLight);
+
+        // Directional Sun Light (Main Key Light)
+        sunLight = new THREE.DirectionalLight(0xfffbeb, 1.8);
         sunLight.position.set(12, 20, 12);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
+        // High resolution shadow mapping
+        sunLight.shadow.mapSize.width = 4096;
+        sunLight.shadow.mapSize.height = 4096;
         sunLight.shadow.camera.near = 0.5;
-        sunLight.shadow.camera.far = 80;
-        const d = 18;
+        sunLight.shadow.camera.far = 100;
+        sunLight.shadow.bias = -0.0005;
+        const d = 22;
         sunLight.shadow.camera.left = -d;
         sunLight.shadow.camera.right = d;
         sunLight.shadow.camera.top = d;
@@ -479,10 +486,16 @@ document.addEventListener('DOMContentLoaded', () => {
         scene.add(sunLight);
 
         // Sun Marker Sphere
-        const sunGeo = new THREE.SphereGeometry(0.85, 16, 16);
-        const sunMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const sunGeo = new THREE.SphereGeometry(1.2, 32, 32);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
         sunMesh = new THREE.Mesh(sunGeo, sunMat);
         scene.add(sunMesh);
+
+        // Add a subtle bloom/glow aura to the sun
+        const auraGeo = new THREE.SphereGeometry(1.8, 32, 32);
+        const auraMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+        const sunAura = new THREE.Mesh(auraGeo, auraMat);
+        sunMesh.add(sunAura);
 
         // Solar Trajectory Arc (Sky Path)
         buildSolarArc();
@@ -755,31 +768,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 doorMat: new THREE.MeshStandardMaterial({ color: 0x0284c7 })
             };
         } else {
-            // Realistic Mode
+            // Realistic Mode using advanced MeshPhysicalMaterial for maximum realism
             const wallMap = {
-                pcm_biowax:       { color: 0x38bdf8, roughness: 0.25, metalness: 0.15 },
-                aerated_concrete: { color: 0xf1f5f9, roughness: 0.65, metalness: 0.05 },
-                rammed_earth:     { color: 0xd4a373, roughness: 0.9, metalness: 0.0 },
-                timber_frame:     { color: 0xb5835a, roughness: 0.7, metalness: 0.05 },
-                brick_cavity:     { color: 0x9c413b, roughness: 0.8, metalness: 0.0 },
-                galvanized_sheet: { color: 0x94a3b8, roughness: 0.3, metalness: 0.7 }
+                pcm_biowax:       { color: 0x38bdf8, roughness: 0.2, metalness: 0.1, clearcoat: 0.3 },
+                aerated_concrete: { color: 0xf1f5f9, roughness: 0.8, metalness: 0.05, clearcoat: 0.0 },
+                rammed_earth:     { color: 0xd4a373, roughness: 0.9, metalness: 0.0, clearcoat: 0.0 },
+                timber_frame:     { color: 0xb5835a, roughness: 0.6, metalness: 0.0, clearcoat: 0.1 },
+                brick_cavity:     { color: 0x9c413b, roughness: 0.85, metalness: 0.0, clearcoat: 0.0 },
+                galvanized_sheet: { color: 0x94a3b8, roughness: 0.4, metalness: 0.8, clearcoat: 0.5 }
             };
             const roofMap = {
-                green_roof:      { color: 0x15803d, roughness: 0.85 },
-                cool_roof:       { color: 0xf8fafc, roughness: 0.2 },
-                sloped_solar:    { color: 0x1e3a8a, roughness: 0.4 },
-                corrugated_iron: { color: 0x64748b, roughness: 0.5 }
+                green_roof:      { color: 0x2e5c1d, roughness: 0.9, metalness: 0.0 }, // Darker, organic green
+                cool_roof:       { color: 0xf8fafc, roughness: 0.2, metalness: 0.1, clearcoat: 0.8 }, // Highly reflective
+                sloped_solar:    { color: 0x1e3a8a, roughness: 0.3, metalness: 0.6 },
+                corrugated_iron: { color: 0x64748b, roughness: 0.6, metalness: 0.7 }
             };
 
             const wProp = wallMap[wallMaterial.value] || wallMap.aerated_concrete;
             const rProp = roofMap[roofType.value] || roofMap.green_roof;
 
             return {
-                wallMat: new THREE.MeshStandardMaterial(wProp),
-                roofMat: new THREE.MeshStandardMaterial(rProp),
-                glassMat: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.7 }),
-                slabMat: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 }),
-                doorMat: new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 })
+                wallMat: new THREE.MeshPhysicalMaterial(wProp),
+                roofMat: new THREE.MeshPhysicalMaterial(rProp),
+                // Hyper-realistic glass with physical transmission instead of standard opacity
+                glassMat: new THREE.MeshPhysicalMaterial({ 
+                    color: 0xffffff, 
+                    roughness: 0.05, 
+                    metalness: 0.1,
+                    transmission: 0.9, // glass effect
+                    ior: 1.5, // index of refraction
+                    thickness: 0.1,
+                    transparent: true 
+                }),
+                slabMat: new THREE.MeshPhysicalMaterial({ color: 0x94a3b8, roughness: 0.9, metalness: 0.1 }),
+                doorMat: new THREE.MeshPhysicalMaterial({ color: 0x451a03, roughness: 0.6, clearcoat: 0.2 })
             };
         }
     }
@@ -804,160 +826,279 @@ document.addEventListener('DOMContentLoaded', () => {
         shelterRoot.rotation.y = rotRad;
 
         const mats = getMaterialsForMode(current3DMode);
+        
+        // Architectural materials for the modern pavilion
+        const deckMat = new THREE.MeshPhysicalMaterial({ color: 0x8b5a2b, roughness: 0.9, metalness: 0.0 });
+        const pillarMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 }); // Dark steel
+        const interiorFloorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2, metalness: 0.2 });
 
-        // 1. Concrete Foundation Slab
-        const slabGeo = new THREE.BoxGeometry(l + 0.4, 0.25, w + 0.4);
+        // 1. Foundation Slab (Wide platform)
+        const platformOverhang = 1.5;
+        const slabGeo = new THREE.BoxGeometry(l + platformOverhang * 2, 0.4, w + platformOverhang * 2);
         const slab = new THREE.Mesh(slabGeo, mats.slabMat);
-        slab.position.y = 0.125;
+        slab.position.y = 0.2;
         slab.castShadow = true;
         slab.receiveShadow = true;
         shelterBody.add(slab);
 
-        // Interior Floor Tiles
-        const floorGeo = new THREE.PlaneGeometry(l - 0.2, w - 0.2);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.7 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = 0.26;
+        // 1.5 Inner Wooden Floor
+        const floorGeo = new THREE.BoxGeometry(l, 0.05, w);
+        const floor = new THREE.Mesh(floorGeo, interiorFloorMat);
+        floor.position.set(0, 0.425, 0);
         floor.receiveShadow = true;
         shelterBody.add(floor);
 
-        // 2. Main Wall Envelope
-        const wallThickness = 0.24;
+        // 2. Corner Steel Pillars
+        const pSize = 0.2;
+        const pillarGeo = new THREE.BoxGeometry(pSize, h, pSize);
+        const pillarPositions = [
+            [-l/2 + pSize/2, -w/2 + pSize/2],
+            [l/2 - pSize/2, -w/2 + pSize/2],
+            [l/2 - pSize/2, w/2 - pSize/2],
+            [-l/2 + pSize/2, w/2 - pSize/2]
+        ];
 
-        // North Wall (Back)
-        const northWallGeo = new THREE.BoxGeometry(l, h, wallThickness);
-        const northWall = new THREE.Mesh(northWallGeo, mats.wallMat);
-        northWall.position.set(0, h / 2 + 0.25, -w / 2 + wallThickness / 2);
-        northWall.castShadow = true;
-        northWall.receiveShadow = true;
-        shelterBody.add(northWall);
+        pillarPositions.forEach(pos => {
+            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+            pillar.position.set(pos[0], h/2 + 0.45, pos[1]);
+            pillar.castShadow = true;
+            shelterBody.add(pillar);
+        });
 
-        // East & West Side Walls
-        const sideWallGeo = new THREE.BoxGeometry(wallThickness, h, w - wallThickness * 2);
-        const eastWall = new THREE.Mesh(sideWallGeo, mats.wallMat);
-        eastWall.position.set(l / 2 - wallThickness / 2, h / 2 + 0.25, 0);
-        eastWall.castShadow = true;
-        eastWall.receiveShadow = true;
-        shelterBody.add(eastWall);
-
-        const westWall = new THREE.Mesh(sideWallGeo, mats.wallMat);
-        westWall.position.set(-l / 2 + wallThickness / 2, h / 2 + 0.25, 0);
-        westWall.castShadow = true;
-        westWall.receiveShadow = true;
-        shelterBody.add(westWall);
-
-        // South Facade with Window Openings & Door
+        // 3. Walls & Glass Envelope (Recessed slightly)
+        const wallThickness = 0.15;
         const wwrRatio = parseFloat(glazingRatio.value) / 100;
-        const winWidth = l * (0.35 + wwrRatio * 0.5);
-        const winHeight = h * (0.3 + wwrRatio * 0.4);
+        
+        // North Wall (Solid)
+        const nWallGeo = new THREE.BoxGeometry(l - pSize*2, h, wallThickness);
+        const nWall = new THREE.Mesh(nWallGeo, mats.wallMat);
+        nWall.position.set(0, h/2 + 0.45, -w/2 + wallThickness/2);
+        nWall.castShadow = true;
+        shelterBody.add(nWall);
 
-        // South Pier Left & Right
-        const pierW = (l - winWidth - 1.2) / 2;
-        if (pierW > 0.1) {
-            const pierGeo = new THREE.BoxGeometry(pierW, h, wallThickness);
-            const pierLeft = new THREE.Mesh(pierGeo, mats.wallMat);
-            pierLeft.position.set(-l / 2 + pierW / 2, h / 2 + 0.25, w / 2 - wallThickness / 2);
-            pierLeft.castShadow = true;
-            shelterBody.add(pierLeft);
+        // East & West Walls (Solid)
+        const ewWallGeo = new THREE.BoxGeometry(wallThickness, h, w - pSize*2);
+        const wWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
+        wWall.position.set(-l/2 + wallThickness/2, h/2 + 0.45, 0);
+        wWall.castShadow = true;
+        shelterBody.add(wWall);
 
-            const pierRight = new THREE.Mesh(pierGeo, mats.wallMat);
-            pierRight.position.set(l / 2 - pierW / 2, h / 2 + 0.25, w / 2 - wallThickness / 2);
-            pierRight.castShadow = true;
-            shelterBody.add(pierRight);
+        const eWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
+        eWall.position.set(l/2 - wallThickness/2, h/2 + 0.45, 0);
+        eWall.castShadow = true;
+        shelterBody.add(eWall);
+
+        // South Facade: Glass walls split for a prominent center entrance door
+        const glassW = l - pSize*2;
+        const doorWidth = 1.2;
+        const doorHeight = 2.2;
+        
+        // Glass left of door
+        const glassSideGeo = new THREE.BoxGeometry((glassW - doorWidth)/2, h, 0.05);
+        const glassLeft = new THREE.Mesh(glassSideGeo, mats.glassMat);
+        glassLeft.position.set(-glassW/2 + glassSideGeo.parameters.width/2, h/2 + 0.45, w/2 - wallThickness/2);
+        shelterBody.add(glassLeft);
+        
+        // Glass right of door
+        const glassRight = new THREE.Mesh(glassSideGeo, mats.glassMat);
+        glassRight.position.set(glassW/2 - glassSideGeo.parameters.width/2, h/2 + 0.45, w/2 - wallThickness/2);
+        shelterBody.add(glassRight);
+
+        // Glass header above door
+        const headerH = h - doorHeight;
+        if (headerH > 0) {
+            const glassHeaderGeo = new THREE.BoxGeometry(doorWidth, headerH, 0.05);
+            const glassHeader = new THREE.Mesh(glassHeaderGeo, mats.glassMat);
+            glassHeader.position.set(0, h - headerH/2 + 0.45, w/2 - wallThickness/2);
+            shelterBody.add(glassHeader);
         }
 
-        // Window Frame & Glass
-        const winFrameGeo = new THREE.BoxGeometry(winWidth, winHeight, 0.12);
-        const winFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
-        const winFrame = new THREE.Mesh(winFrameGeo, winFrameMat);
-        winFrame.position.set(-0.6, winHeight / 2 + 0.65, w / 2 - wallThickness / 2);
-        shelterBody.add(winFrame);
-
-        const glassGeo = new THREE.BoxGeometry(winWidth - 0.15, winHeight - 0.15, 0.06);
-        const glass = new THREE.Mesh(glassGeo, mats.glassMat);
-        glass.position.set(-0.6, winHeight / 2 + 0.65, w / 2 - wallThickness / 2);
-        shelterBody.add(glass);
-
-        // Window Mullion dividers
-        const mullionV = new THREE.Mesh(new THREE.BoxGeometry(0.06, winHeight, 0.08), winFrameMat);
-        mullionV.position.copy(glass.position);
-        shelterBody.add(mullionV);
-
-        // Entrance Door with Handle
-        const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.15, 0.14), winFrameMat);
-        doorFrame.position.set(l / 2 - 1.1, 1.075 + 0.25, w / 2 - wallThickness / 2);
-        shelterBody.add(doorFrame);
-
-        const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.95, 2.05, 0.08), mats.doorMat);
-        doorLeaf.position.set(l / 2 - 1.1, 1.05 + 0.25, w / 2 - wallThickness / 2);
+        // Heavy Modern Wood Front Door
+        const doorLeafGeo = new THREE.BoxGeometry(doorWidth - 0.05, doorHeight, 0.15);
+        const doorLeaf = new THREE.Mesh(doorLeafGeo, mats.doorMat);
+        doorLeaf.position.set(0, doorHeight/2 + 0.45, w/2 - wallThickness/2);
         doorLeaf.castShadow = true;
         shelterBody.add(doorLeaf);
 
-        // Brass handle
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.18), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9 }));
-        handle.position.set(l / 2 - 1.45, 1.1 + 0.25, w / 2 + 0.02);
+        // Large vertical modern handle
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.1 });
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), handleMat);
+        handle.position.set(doorWidth/2 - 0.15, doorHeight/2 + 0.45, w/2 - wallThickness/2 + 0.12);
         shelterBody.add(handle);
 
-        // 3. Interior Thermal Mass Trombe Wall (Visible in X-ray or when roof is lifted)
-        const trombeGeo = new THREE.BoxGeometry(l * 0.45, h * 0.85, 0.35);
-        const trombeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 }); // dense basalt thermal stone
-        const trombeWall = new THREE.Mesh(trombeGeo, trombeMat);
-        trombeWall.position.set(0, (h * 0.85) / 2 + 0.25, 0);
-        trombeWall.castShadow = true;
-        shelterBody.add(trombeWall);
-
-        // 4. Roof Construction (With Lift / Exploded View Animation)
-        const roofOverhang = 0.6;
-        const roofThickness = 0.26;
-        const roofGeo = new THREE.BoxGeometry(l + roofOverhang * 2, roofThickness, w + roofOverhang * 2);
+        // 4. Clean Flat Roof Slab (Hovering effect)
+        const roofThickness = 0.35;
+        const roofGeo = new THREE.BoxGeometry(l + platformOverhang * 2, roofThickness, w + platformOverhang * 2);
         const roofMesh = new THREE.Mesh(roofGeo, mats.roofMat);
         roofMesh.castShadow = true;
         roofMesh.receiveShadow = true;
 
+        // Dark sleek Fascia wrapped around the roof
+        const fasciaMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3 });
+        const fasciaThick = 0.05;
+        const fN = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
+        fN.position.set(0, 0, -(w + platformOverhang*2)/2 - fasciaThick/2);
+        roofMesh.add(fN);
+        const fS = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
+        fS.position.set(0, 0, (w + platformOverhang*2)/2 + fasciaThick/2);
+        roofMesh.add(fS);
+        const fE = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
+        fE.position.set((l + platformOverhang*2)/2 + fasciaThick/2, 0, 0);
+        roofMesh.add(fE);
+        const fW = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
+        fW.position.set(-(l + platformOverhang*2)/2 - fasciaThick/2, 0, 0);
+        roofMesh.add(fW);
+
+        // Optional Solar Panels
         if (roofType.value === 'sloped_solar') {
-            roofMesh.rotation.x = 0.18; // Pitch toward south
-        } else {
-            roofMesh.rotation.x = 0.05;
+            const panelGeo = new THREE.BoxGeometry(l, 0.05, w);
+            const panelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 });
+            const solarPanel = new THREE.Mesh(panelGeo, panelMat);
+            solarPanel.position.set(0, roofThickness/2 + 0.05, 0);
+            roofMesh.add(solarPanel);
         }
 
-        // Lift roof if exploded toggle is checked
-        const roofLiftY = toggleExploded.checked ? 2.8 : 0;
-        shelterRoof.position.y = h + 0.38 + roofLiftY;
+        // Lift roof logic
+        const roofLiftY = toggleExploded.checked ? 3.5 : 0;
+        shelterRoof.position.y = h + 0.45 + roofThickness/2 + roofLiftY;
         shelterRoof.add(roofMesh);
 
-        // If roof is lifted, draw inspection dashed support lines
         if (toggleExploded.checked) {
             const liftLinesMat = new THREE.LineDashedMaterial({ color: 0x3b82f6, dashSize: 0.3, gapSize: 0.2 });
-            const corners = [
-                [-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]
-            ];
-            corners.forEach(([cx, cz]) => {
-                const pts = [new THREE.Vector3(cx, h + 0.25, cz), new THREE.Vector3(cx, h + 0.25 + roofLiftY, cz)];
-                const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-                const line = new THREE.Line(lineGeo, liftLinesMat);
+            pillarPositions.forEach(pos => {
+                const pts = [new THREE.Vector3(pos[0], h + 0.45, pos[1]), new THREE.Vector3(pos[0], h + 0.45 + roofLiftY, pos[1])];
+                const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), liftLinesMat);
                 line.computeLineDistances();
                 shelterRoof.add(line);
             });
         }
 
-        // 5. 3D Dynamic Dimension Markers (When toggle is ON)
+        // 5. Detailed Practical Interior
+        // Interior Partition Wall (Bathroom enclosure in NW corner)
+        const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 });
+        const partitionZ = new THREE.Mesh(new THREE.BoxGeometry(1.5, h, 0.1), interiorWallMat);
+        partitionZ.position.set(-l/2 + 1.5/2 + pSize, h/2 + 0.45, -w/2 + 1.5 + pSize);
+        partitionZ.castShadow = true;
+        shelterBody.add(partitionZ);
+        
+        const partitionX = new THREE.Mesh(new THREE.BoxGeometry(0.1, h, 1.5), interiorWallMat);
+        partitionX.position.set(-l/2 + 1.5 + pSize, h/2 + 0.45, -w/2 + 1.5/2 + pSize);
+        partitionX.castShadow = true;
+        shelterBody.add(partitionX);
+
+        // Kitchen Island (Center East)
+        const kitchenIslandMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 }); // Dark marble/granite
+        const islandGeo = new THREE.BoxGeometry(0.8, 0.9, 1.8);
+        const island = new THREE.Mesh(islandGeo, kitchenIslandMat);
+        island.position.set(l/4, 0.9/2 + 0.45, 0);
+        island.castShadow = true;
+        shelterBody.add(island);
+
+        // Living Room Sofa (Center West facing South)
+        const sofaMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.9 }); // Leather color
+        const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.7), sofaMat);
+        sofaSeat.position.set(-l/4 + 0.5, 0.4/2 + 0.45, 0.2);
+        sofaSeat.castShadow = true;
+        shelterBody.add(sofaSeat);
+        const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.2), sofaMat);
+        sofaBack.position.set(-l/4 + 0.5, 0.8/2 + 0.45, -0.05);
+        sofaBack.castShadow = true;
+        shelterBody.add(sofaBack);
+
+        const trombeGeo = new THREE.BoxGeometry(l * 0.4, h * 0.8, 0.3);
+        const trombeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
+        const trombeWall = new THREE.Mesh(trombeGeo, trombeMat);
+        trombeWall.position.set(0, (h * 0.8)/2 + 0.45, -w/2 + 0.8);
+        trombeWall.castShadow = true;
+        shelterBody.add(trombeWall);
+
+        // Modern low-profile bed (Moved slightly to fit partitions)
+        const bedGeo = new THREE.BoxGeometry(1.8, 0.3, 1.4);
+        const bedMat = new THREE.MeshPhysicalMaterial({ color: 0xd1d5db, roughness: 0.9 });
+        const bed = new THREE.Mesh(bedGeo, bedMat);
+        bed.position.set(l/2 - 1.2, 0.45 + 0.15, -w/2 + 1.2);
+        bed.castShadow = true;
+        shelterBody.add(bed);
+
+        // Area Rug under the bed
+        const rugGeo = new THREE.PlaneGeometry(2.8, 2.2);
+        const rugMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 1.0 });
+        const rug = new THREE.Mesh(rugGeo, rugMat);
+        rug.rotation.x = -Math.PI / 2;
+        rug.position.set(l/2 - 1.5, 0.455, 0);
+        rug.receiveShadow = true;
+        shelterBody.add(rug);
+
+        // Modern Desk and Chair against West Wall
+        const woodMat = new THREE.MeshPhysicalMaterial({ color: 0x8b5a2b, roughness: 0.7 });
+        const deskTop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 1.4), woodMat);
+        deskTop.position.set(-l/2 + 0.6, 0.45 + 0.75, 0);
+        deskTop.castShadow = true;
+        shelterBody.add(deskTop);
+        // Desk legs
+        for(let z of [-0.65, 0.65]) {
+            const dLeg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.05), pillarMat);
+            dLeg.position.set(-l/2 + 0.6, 0.45 + 0.375, z);
+            dLeg.castShadow = true;
+            shelterBody.add(dLeg);
+        }
+        
+        // Desk Chair
+        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.4), pillarMat);
+        chairSeat.position.set(-l/2 + 1.2, 0.45 + 0.45, 0);
+        chairSeat.castShadow = true;
+        shelterBody.add(chairSeat);
+        const chairLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), pillarMat);
+        chairLeg.position.set(-l/2 + 1.2, 0.45 + 0.225, 0);
+        chairLeg.castShadow = true;
+        shelterBody.add(chairLeg);
+
+        // Potted Plant in the corner
+        const potMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.15, 0.4, 16), potMat);
+        pot.position.set(-l/2 + 0.5, 0.45 + 0.2, w/2 - 0.5);
+        pot.castShadow = true;
+        shelterBody.add(pot);
+        
+        const plantMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.8 });
+        const plant1 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), plantMat);
+        plant1.position.set(-l/2 + 0.5, 0.45 + 0.6, w/2 - 0.5);
+        plant1.castShadow = true;
+        shelterBody.add(plant1);
+        const plant2 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), plantMat);
+        plant2.position.set(-l/2 + 0.65, 0.45 + 0.45, w/2 - 0.35);
+        plant2.castShadow = true;
+        shelterBody.add(plant2);
+
+        // Exterior Touch-Up: Entrance Steps
+        const stepMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+        const stepGeo1 = new THREE.BoxGeometry(2.0, 0.1, 0.4);
+        const step1 = new THREE.Mesh(stepGeo1, stepMat);
+        step1.position.set(0, 0.05, w/2 + platformOverhang + 0.2);
+        step1.castShadow = true;
+        step1.receiveShadow = true;
+        shelterBody.add(step1);
+        
+        const stepGeo2 = new THREE.BoxGeometry(2.0, 0.1, 0.4);
+        const step2 = new THREE.Mesh(stepGeo2, stepMat);
+        step2.position.set(0, 0.15, w/2 + platformOverhang - 0.2);
+        step2.castShadow = true;
+        step2.receiveShadow = true;
+        shelterBody.add(step2);
+
+        // 6. Dimensions and Compass
         if (toggleDimensions.checked) {
             buildDimensionLines(l, w, h);
         }
 
-        // Compass orientation indicator arrow
         const arrow = new THREE.ArrowHelper(
             new THREE.Vector3(0, 0, 1),
-            new THREE.Vector3(0, 0.3, 0),
-            w * 0.7 + 1.2,
-            0x2563eb,
-            0.8,
-            0.5
+            new THREE.Vector3(0, 0.5, 0),
+            w * 0.7 + platformOverhang + 1.0,
+            0x2563eb, 0.8, 0.5
         );
         shelterBody.add(arrow);
 
-        // Update Overlay text
         if (overlayDimensions) {
             overlayDimensions.textContent = `Envelope: ${l.toFixed(1)}m × ${w.toFixed(1)}m × ${h.toFixed(1)}m`;
         }
