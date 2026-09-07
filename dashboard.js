@@ -485,27 +485,33 @@ document.addEventListener('DOMContentLoaded', () => {
         sunLight.shadow.camera.bottom = -d;
         scene.add(sunLight);
 
-        // Realistic Sun with Multi-layered Bloom/Corona
-        // Core: Blinding white/yellow center
-        const sunGeo = new THREE.SphereGeometry(1.4, 32, 32);
-        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        sunMesh = new THREE.Mesh(sunGeo, sunMat);
+        // Photorealistic Sun using a Sprite with custom Canvas Radial Gradient (Lens Flare Effect)
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');      // Blinding white core
+        gradient.addColorStop(0.05, 'rgba(255, 255, 200, 1.0)');   // Intense bright yellow
+        gradient.addColorStop(0.15, 'rgba(255, 170, 0, 0.8)');     // Orange corona
+        gradient.addColorStop(0.4, 'rgba(255, 80, 0, 0.3)');       // Deep atmospheric spread
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');              // Fade to invisible
+        
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 512, 512);
+
+        const sunTexture = new THREE.CanvasTexture(canvas);
+        const sunMaterial = new THREE.SpriteMaterial({ 
+            map: sunTexture, 
+            color: 0xffffff, 
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            depthWrite: false // Prevents the flare box from clipping geometry
+        });
+
+        sunMesh = new THREE.Sprite(sunMaterial);
+        sunMesh.scale.set(40, 40, 1); // Massive scale for the cinematic sky bloom
         scene.add(sunMesh);
-
-        // Corona Layer 1: Intense bright yellow, additive
-        const corona1Geo = new THREE.SphereGeometry(1.8, 32, 32);
-        const corona1Mat = new THREE.MeshBasicMaterial({ color: 0xffeebb, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
-        sunMesh.add(new THREE.Mesh(corona1Geo, corona1Mat));
-
-        // Corona Layer 2: Orange gradient spread, additive
-        const corona2Geo = new THREE.SphereGeometry(3.5, 32, 32);
-        const corona2Mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
-        sunMesh.add(new THREE.Mesh(corona2Geo, corona2Mat));
-
-        // Corona Layer 3: Giant faint atmospheric halo, additive
-        const corona3Geo = new THREE.SphereGeometry(8.0, 32, 32);
-        const corona3Mat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending });
-        sunMesh.add(new THREE.Mesh(corona3Geo, corona3Mat));
 
         // Solar Trajectory Arc (Sky Path)
         buildSolarArc();
