@@ -490,32 +490,78 @@ document.addEventListener('DOMContentLoaded', () => {
         sunLight.shadow.camera.bottom = -d;
         scene.add(sunLight);
 
-        // Photorealistic Sun using a Sprite with custom Canvas Radial Gradient (Lens Flare Effect)
+        // Photorealistic Sky Dome Shader
+        const vertexShader = `
+            varying vec3 vWorldPosition;
+            void main() {
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const fragmentShader = `
+            uniform vec3 topColor;
+            uniform vec3 bottomColor;
+            uniform float offset;
+            uniform float exponent;
+            varying vec3 vWorldPosition;
+            void main() {
+                float h = normalize(vWorldPosition + offset).y;
+                gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+            }
+        `;
+        const uniforms = {
+            topColor: { value: new THREE.Color(0x3b82f6) },    // Deep sky blue
+            bottomColor: { value: new THREE.Color(0xe0f2fe) }, // Horizon haze
+            offset: { value: 33 },
+            exponent: { value: 0.6 }
+        };
+        const skyGeo = new THREE.SphereGeometry(500, 32, 15);
+        const skyMat = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: uniforms,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeo, skyMat);
+        scene.add(sky);
+
+        // Ultra-Realistic Sun Group (Solid Core + Optical Flare)
+        sunMesh = new THREE.Group();
+        
+        // 1. Solid physical core (blinding white)
+        const coreGeo = new THREE.SphereGeometry(1.5, 32, 32);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        sunMesh.add(core);
+
+        // 2. Optical Lens Flare/Corona using Radial Gradient Sprite
         const canvas = document.createElement('canvas');
         canvas.width = 512;
         canvas.height = 512;
         const context = canvas.getContext('2d');
         const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');      // Blinding white core
-        gradient.addColorStop(0.05, 'rgba(255, 255, 200, 1.0)');   // Intense bright yellow
-        gradient.addColorStop(0.15, 'rgba(255, 170, 0, 0.8)');     // Orange corona
-        gradient.addColorStop(0.4, 'rgba(255, 80, 0, 0.3)');       // Deep atmospheric spread
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');              // Fade to invisible
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        gradient.addColorStop(0.05, 'rgba(255, 255, 200, 1.0)');
+        gradient.addColorStop(0.15, 'rgba(255, 170, 0, 0.8)');
+        gradient.addColorStop(0.4, 'rgba(255, 80, 0, 0.3)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         
         context.fillStyle = gradient;
         context.fillRect(0, 0, 512, 512);
 
         const sunTexture = new THREE.CanvasTexture(canvas);
-        const sunMaterial = new THREE.SpriteMaterial({ 
+        const sunFlareMat = new THREE.SpriteMaterial({ 
             map: sunTexture, 
             color: 0xffffff, 
             blending: THREE.AdditiveBlending,
             transparent: true,
-            depthWrite: false // Prevents the flare box from clipping geometry
+            depthWrite: false 
         });
-
-        sunMesh = new THREE.Sprite(sunMaterial);
-        sunMesh.scale.set(40, 40, 1); // Massive scale for the cinematic sky bloom
+        const flare = new THREE.Sprite(sunFlareMat);
+        flare.scale.set(60, 60, 1); // Massive atmospheric scatter
+        sunMesh.add(flare);
+        
         scene.add(sunMesh);
 
         // Solar Trajectory Arc (Sky Path)
