@@ -464,17 +464,17 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.dampingFactor = 0.06;
         controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-        // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15); // Very dim ambient
+        // Ambient Light — soft fill to avoid pitch-black shadows
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
         scene.add(ambientLight);
 
-        // Hemisphere light for realistic sky/ground bounce lighting
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.2); // Very dim
+        // Hemisphere light — sky/ground bounce for natural outdoor feel
+        const hemiLight = new THREE.HemisphereLight(0xbfdbfe, 0x6b7280, 0.35);
         hemiLight.position.set(0, 20, 0);
         scene.add(hemiLight);
 
-        // Directional Sun Light (Main Key Light)
-        sunLight = new THREE.DirectionalLight(0xfffbeb, 0.55); // Further reduced → 0.55
+        // Directional Sun Light — natural daylight intensity
+        sunLight = new THREE.DirectionalLight(0xfffbeb, 1.3);
         sunLight.position.set(12, 20, 12);
         sunLight.castShadow = true;
         // High resolution shadow mapping
@@ -529,8 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ultra-Realistic Sun Group (Solid Core + Optical Flare)
         sunMesh = new THREE.Group();
         
-        // 1. Solid physical core
-        const coreGeo = new THREE.SphereGeometry(0.6, 32, 32); // Normal realistic size
+        // 1. Solid physical core — sized for a realistic sun disc in the sky
+        const coreGeo = new THREE.SphereGeometry(1.0, 32, 32);
         const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const core = new THREE.Mesh(coreGeo, coreMat);
         sunMesh.add(core);
@@ -541,11 +541,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = 512;
         const context = canvas.getContext('2d');
         const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
-        gradient.addColorStop(0, 'rgba(255, 240, 180, 0.5)');
-        gradient.addColorStop(0.1, 'rgba(255, 200, 80, 0.3)');
-        gradient.addColorStop(0.3, 'rgba(255, 150, 0, 0.12)');
-        gradient.addColorStop(0.6, 'rgba(200, 80, 0, 0.04)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Very faint corona
+        gradient.addColorStop(0,    'rgba(255, 255, 220, 0.95)');
+        gradient.addColorStop(0.06, 'rgba(255, 230, 140, 0.75)');
+        gradient.addColorStop(0.18, 'rgba(255, 180, 40,  0.4)');
+        gradient.addColorStop(0.45, 'rgba(255, 120, 0,   0.12)');
+        gradient.addColorStop(1,    'rgba(0,   0,   0,   0)'); // Natural soft corona
         
         context.fillStyle = gradient;
         context.fillRect(0, 0, 512, 512);
@@ -559,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             depthWrite: false 
         });
         const flare = new THREE.Sprite(sunFlareMat);
-        flare.scale.set(22, 22, 1); // Normal realistic corona
+        flare.scale.set(32, 32, 1); // Well-proportioned atmospheric corona
         sunMesh.add(flare);
         
         scene.add(sunMesh);
