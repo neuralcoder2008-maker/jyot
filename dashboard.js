@@ -1139,23 +1139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
         initChimneySmoke(l / 4, h + 0.3 + roofLiftY + roofThickness / 2 + 1.1, -w / 4);
 
-        // Educational Sprites
-        const chimneySprite = makeKnowledgeSprite("Eco-Hearth Chimney\nProper ventilation system\nfor safe indoor heating");
-        chimneySprite.position.set(l / 4 + 1.5, roofThickness + 1.5, -w / 4);
-        roofGroup.add(chimneySprite);
-
-        const roofSprite = makeKnowledgeSprite("Passive Solar Overhang\nBlocks summer heat,\nallows winter sun");
-        roofSprite.position.set(-l / 2 - 1.0, 0.5, w / 2 + 1.0);
-        roofGroup.add(roofSprite);
-
-        const glassSprite = makeKnowledgeSprite("High-Performance Glazing\nOptimized for daylighting\n& thermal resistance");
-        glassSprite.position.set(0, -h / 2, w / 2 + 1.0);
-        roofGroup.add(glassSprite);
-
-        const slabSprite = makeKnowledgeSprite("Thermal Mass Foundation\nAbsorbs daytime heat,\nreleases it at night");
-        slabSprite.position.set(l / 2 + 1.0, -h - 0.2, -w / 2 - 1.0);
-        roofGroup.add(slabSprite);
-
         shelterRoof.position.y = h + 0.3 + roofLiftY;
         shelterRoof.add(roofGroup);
 
