@@ -1104,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         shelterBody.add(doorGroup);
 
         // 4. Clean Flat Roof Slab (Hovering effect)
+        const roofGroup = new THREE.Group();
         const roofThickness = 0.35;
         const roofGeo = new THREE.BoxGeometry(l + platformOverhang * 2, roofThickness, w + platformOverhang * 2);
         const roofMesh = new THREE.Mesh(roofGeo, mats.roofMat);
