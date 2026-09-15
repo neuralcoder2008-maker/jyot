@@ -464,6 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderer.setSize(width, height);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
         container.appendChild(renderer.domElement);
 
         controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -885,18 +887,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 wallMat: new THREE.MeshPhysicalMaterial(wProp),
                 roofMat: new THREE.MeshPhysicalMaterial(rProp),
-                // Hyper-realistic glass with physical transmission instead of standard opacity
                 glassMat: new THREE.MeshPhysicalMaterial({ 
-                    color: 0xffffff, 
-                    roughness: 0.05, 
-                    metalness: 0.1,
-                    transmission: 0.9, // glass effect
-                    ior: 1.5, // index of refraction
-                    thickness: 0.1,
-                    transparent: true 
+                    color: 0xbae6fd, transmission: 0.95, opacity: 1, transparent: true,
+                    roughness: 0.02, metalness: 0.1, ior: 1.52, thickness: 0.5, clearcoat: 1.0, clearcoatRoughness: 0.01
                 }),
-                slabMat: new THREE.MeshPhysicalMaterial({ color: 0x94a3b8, roughness: 0.9, metalness: 0.1 }),
-                doorMat: new THREE.MeshPhysicalMaterial({ color: 0x451a03, roughness: 0.6, clearcoat: 0.2 })
+                slabMat: new THREE.MeshPhysicalMaterial({ color: 0x71717a, roughness: 0.95, metalness: 0.1 }),
+                doorMat: new THREE.MeshPhysicalMaterial({ color: 0x3e1f0b, roughness: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.2 })
             };
         }
     }
@@ -1132,19 +1128,32 @@ document.addEventListener('DOMContentLoaded', () => {
         roofGroup.add(roofMesh);
 
         // Chimney
+        const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
         const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.5), chimneyMat);
-        chimney.position.set(l / 4, roofHeight / 2 + 0.5, -w / 4);
+        chimney.position.set(l / 4, roofThickness / 2 + 0.5, -w / 4);
         chimney.castShadow = true;
         roofGroup.add(chimney);
 
         // Smoke particles (animated)
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
-        initChimneySmoke(l / 4, h + 0.3 + roofLiftY + roofHeight / 2 + 1.1, -w / 4);
+        initChimneySmoke(l / 4, h + 0.3 + roofLiftY + roofThickness / 2 + 1.1, -w / 4);
 
-        // Educational Sprite
+        // Educational Sprites
         const chimneySprite = makeKnowledgeSprite("Eco-Hearth Chimney\nProper ventilation system\nfor safe indoor heating");
-        chimneySprite.position.set(l / 4 + 1.5, roofHeight + 1.5, -w / 4);
+        chimneySprite.position.set(l / 4 + 1.5, roofThickness + 1.5, -w / 4);
         roofGroup.add(chimneySprite);
+
+        const roofSprite = makeKnowledgeSprite("Passive Solar Overhang\nBlocks summer heat,\nallows winter sun");
+        roofSprite.position.set(-l / 2 - 1.0, 0.5, w / 2 + 1.0);
+        roofGroup.add(roofSprite);
+
+        const glassSprite = makeKnowledgeSprite("High-Performance Glazing\nOptimized for daylighting\n& thermal resistance");
+        glassSprite.position.set(0, -h / 2, w / 2 + 1.0);
+        roofGroup.add(glassSprite);
+
+        const slabSprite = makeKnowledgeSprite("Thermal Mass Foundation\nAbsorbs daytime heat,\nreleases it at night");
+        slabSprite.position.set(l / 2 + 1.0, -h - 0.2, -w / 2 - 1.0);
+        roofGroup.add(slabSprite);
 
         shelterRoof.position.y = h + 0.3 + roofLiftY;
         shelterRoof.add(roofGroup);
