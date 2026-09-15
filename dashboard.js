@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayUserName = document.getElementById('displayUserName');
 
     const storedUser = sessionStorage.getItem('thermal_user');
+    
+    if (!storedUser) {
+        // Enforce Authentication
+        window.location.href = 'index.html';
+        return;
+    }
+
     if (storedUser) {
         try {
             const userObj = JSON.parse(storedUser);
@@ -1130,17 +1137,15 @@ document.addEventListener('DOMContentLoaded', () => {
         chimney.castShadow = true;
         roofGroup.add(chimney);
 
-        // Smoke particles / puffs
-        for (let i = 0; i < 3; i++) {
-            const smoke = new THREE.Mesh(
-                new THREE.SphereGeometry(0.15 + i * 0.05, 8, 8),
-                new THREE.MeshStandardMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.6 - i * 0.15 })
-            );
-            smoke.position.set(l / 4, roofHeight + 1.2 + i * 0.3, -w / 4 + i * 0.1);
-            roofGroup.add(smoke);
-        }
-
+        // Smoke particles (animated)
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
+        initChimneySmoke(l / 4, h + 0.3 + roofLiftY + roofHeight / 2 + 1.1, -w / 4);
+
+        // Educational Sprite
+        const chimneySprite = makeKnowledgeSprite("Eco-Hearth Chimney\nProper ventilation system\nfor safe indoor heating");
+        chimneySprite.position.set(l / 4 + 1.5, roofHeight + 1.5, -w / 4);
+        roofGroup.add(chimneySprite);
+
         shelterRoof.position.y = h + 0.3 + roofLiftY;
         shelterRoof.add(roofGroup);
 
@@ -1643,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchLiveWeatherBtn.textContent = 'Connecting...';
 
         try {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,direct_normal_irradiance,wind_speed_10m&forecast_days=1`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,direct_normal_irradiance,wind_speed_10m,wind_direction_10m&forecast_days=1`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Network error');
             const data = await response.json();
@@ -1652,11 +1657,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const hourlyHum = data.hourly.relative_humidity_2m.slice(0, 24);
             const hourlySolar = data.hourly.direct_normal_irradiance.slice(0, 24);
             const hourlyWind = data.hourly.wind_speed_10m.slice(0, 24);
+            const hourlyWindDir = data.hourly.wind_direction_10m.slice(0, 24);
 
             const avgT = Number((hourlyTemps.reduce((a,b)=>a+b,0)/24).toFixed(1));
             const avgH = Math.round(hourlyHum.reduce((a,b)=>a+b,0)/24);
             const maxS = Math.round(Math.max(...hourlySolar));
             const avgW = (hourlyWind.reduce((a,b)=>a+b,0)/24).toFixed(1);
+            
+            // Circular mean for daily wind direction
+            let sumSin = 0, sumCos = 0;
+            for(let a of hourlyWindDir) {
+                sumSin += Math.sin(a * Math.PI / 180);
+                sumCos += Math.cos(a * Math.PI / 180);
+            }
+            let avgWindDir = Math.round((Math.atan2(sumSin, sumCos) * 180 / Math.PI + 360) % 360);
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            let compass = directions[Math.round(avgWindDir / 45) % 8];
 
             activePreset = {
                 name: `Custom [${lat.toFixed(2)}, ${lon.toFixed(2)}]`,
@@ -1665,9 +1681,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 temp: avgT,
                 humidity: avgH,
                 solar: maxS,
-                wind: `${avgW} m/s Live`,
+                wind: `${avgW} m/s ${compass}`,
                 windSpeedVal: parseFloat(avgW),
-                windAngleDeg: 60,
+                windAngleDeg: avgWindDir,
                 diurnalOutdoor: hourlyTemps,
                 diurnalIndoor: hourlyTemps.map(t => Number((t + 5.5).toFixed(1))),
                 solarGains: hourlySolar.map(s => Math.round(s * 0.4)),
