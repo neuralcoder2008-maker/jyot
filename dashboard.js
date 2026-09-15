@@ -624,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const delta = clock.getDelta();
             animateWindParticles(delta);
+            animateChimneySmoke(delta);
 
             if (doorGroup) {
                 const targetRot = doorGroup.userData.isOpen ? -Math.PI / 2.2 : 0;
@@ -893,6 +894,84 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Chimney smoke system
+    let chimneySmoke = null;
+    let chimneySmokePosArr = null;
+    let chimneySmokeDriftArr = null;
+    const chimSmokeCount = 40;
+
+    function initChimneySmoke(cx, cy, cz) {
+        if (chimneySmoke) { scene.remove(chimneySmoke); chimneySmoke = null; }
+        const sgeo = new THREE.BufferGeometry();
+        const pos = new Float32Array(chimSmokeCount * 3);
+        chimneySmokeDriftArr = new Float32Array(chimSmokeCount * 3);
+        for (let i = 0; i < chimSmokeCount; i++) {
+            pos[i*3]   = cx + (Math.random()-0.5)*0.18;
+            pos[i*3+1] = cy + Math.random()*3.5;
+            pos[i*3+2] = cz + (Math.random()-0.5)*0.18;
+            chimneySmokeDriftArr[i*3]   = (Math.random()-0.5)*0.008;
+            chimneySmokeDriftArr[i*3+2] = (Math.random()-0.5)*0.008;
+        }
+        chimneySmokePosArr = pos;
+        sgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const sc2 = document.createElement('canvas'); sc2.width=64; sc2.height=64;
+        const sc2c = sc2.getContext('2d');
+        const sg2 = sc2c.createRadialGradient(32,32,0,32,32,32);
+        sg2.addColorStop(0,'rgba(210,210,210,0.95)'); sg2.addColorStop(1,'rgba(210,210,210,0)');
+        sc2c.fillStyle=sg2; sc2c.fillRect(0,0,64,64);
+        const smat = new THREE.PointsMaterial({ size:0.5, map: new THREE.CanvasTexture(sc2), transparent:true, opacity:0.5, depthWrite:false, blending:THREE.NormalBlending });
+        chimneySmoke = new THREE.Points(sgeo, smat);
+        chimneySmoke.userData = { cx, cy, cz };
+        scene.add(chimneySmoke);
+    }
+
+    function animateChimneySmoke(delta) {
+        if (!chimneySmoke || !chimneySmokePosArr) return;
+        const { cx, cy, cz } = chimneySmoke.userData;
+        const pos = chimneySmoke.geometry.attributes.position.array;
+        for (let i = 0; i < chimSmokeCount; i++) {
+            pos[i*3+1] += delta * 0.45;
+            pos[i*3]   += chimneySmokeDriftArr[i*3]   * delta * 28;
+            pos[i*3+2] += chimneySmokeDriftArr[i*3+2] * delta * 28;
+            if (pos[i*3+1] > cy + 4.2) {
+                pos[i*3]   = cx + (Math.random()-0.5)*0.18;
+                pos[i*3+1] = cy;
+                pos[i*3+2] = cz + (Math.random()-0.5)*0.18;
+            }
+        }
+        chimneySmoke.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Educational floating label sprite
+    function makeKnowledgeSprite(text) {
+        const lines = text.split('\n');
+        const canW = 420, lineH = 34, pad = 14;
+        const canH = lines.length * lineH + pad * 2 + 8;
+        const can = document.createElement('canvas');
+        can.width = canW; can.height = canH;
+        const ctx2 = can.getContext('2d');
+        ctx2.fillStyle = 'rgba(10,20,35,0.90)';
+        const r2 = 14;
+        ctx2.beginPath();
+        ctx2.moveTo(r2,0); ctx2.lineTo(canW-r2,0);
+        ctx2.quadraticCurveTo(canW,0,canW,r2);
+        ctx2.lineTo(canW,canH-r2); ctx2.quadraticCurveTo(canW,canH,canW-r2,canH);
+        ctx2.lineTo(r2,canH); ctx2.quadraticCurveTo(0,canH,0,canH-r2);
+        ctx2.lineTo(0,r2); ctx2.quadraticCurveTo(0,0,r2,0);
+        ctx2.closePath(); ctx2.fill();
+        ctx2.strokeStyle='rgba(56,189,248,0.75)'; ctx2.lineWidth=2.5; ctx2.stroke();
+        lines.forEach((line, i) => {
+            ctx2.font = i===0 ? 'bold 20px Inter,Arial' : '16px Inter,Arial';
+            ctx2.fillStyle = i===0 ? '#7dd3fc' : '#e2e8f0';
+            ctx2.textAlign = 'left';
+            ctx2.fillText(line, pad+4, pad + i*lineH + 20);
+        });
+        const tex = new THREE.CanvasTexture(can);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
+        sp.scale.set(canW/75, canH/75, 1);
+        return sp;
+    }
+
     function rebuildShelter() {
         while (shelterBody.children.length > 0) {
             shelterBody.remove(shelterBody.children[0]);
@@ -1043,25 +1122,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const fW = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
         fW.position.set(-(l + platformOverhang*2)/2 - fasciaThick/2, 0, 0);
         roofMesh.add(fW);
+        roofGroup.add(roofMesh);
 
-        // Optional Solar Panels
-        if (roofType.value === 'sloped_solar') {
-            const panelGeo = new THREE.BoxGeometry(l, 0.05, w);
-            const panelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 });
-            const solarPanel = new THREE.Mesh(panelGeo, panelMat);
-            solarPanel.position.set(0, roofThickness/2 + 0.05, 0);
-            roofMesh.add(solarPanel);
+        // Chimney
+        const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.5), chimneyMat);
+        chimney.position.set(l / 4, roofHeight / 2 + 0.5, -w / 4);
+        chimney.castShadow = true;
+        roofGroup.add(chimney);
+
+        // Smoke particles / puffs
+        for (let i = 0; i < 3; i++) {
+            const smoke = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15 + i * 0.05, 8, 8),
+                new THREE.MeshStandardMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.6 - i * 0.15 })
+            );
+            smoke.position.set(l / 4, roofHeight + 1.2 + i * 0.3, -w / 4 + i * 0.1);
+            roofGroup.add(smoke);
         }
 
-        // Lift roof logic
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
-        shelterRoof.position.y = h + 0.45 + roofThickness/2 + roofLiftY;
-        shelterRoof.add(roofMesh);
+        shelterRoof.position.y = h + 0.3 + roofLiftY;
+        shelterRoof.add(roofGroup);
 
         if (toggleExploded.checked) {
             const liftLinesMat = new THREE.LineDashedMaterial({ color: 0x3b82f6, dashSize: 0.3, gapSize: 0.2 });
-            pillarPositions.forEach(pos => {
-                const pts = [new THREE.Vector3(pos[0], h + 0.45, pos[1]), new THREE.Vector3(pos[0], h + 0.45 + roofLiftY, pos[1])];
+            const corners = [
+                [-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]
+            ];
+            corners.forEach(pos => {
+                const pts = [new THREE.Vector3(pos[0], h + 0.3, pos[1]), new THREE.Vector3(pos[0], h + 0.3 + roofLiftY, pos[1])];
                 const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), liftLinesMat);
                 line.computeLineDistances();
                 shelterRoof.add(line);
