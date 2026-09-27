@@ -633,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const delta = clock.getDelta();
             animateWindParticles(delta);
-            animateChimneySmoke(delta);
+            if (ceilingFan) ceilingFan.rotation.y += 5 * delta;
 
             if (doorGroup) {
                 const targetRot = doorGroup.userData.isOpen ? -Math.PI / 2.2 : 0;
@@ -897,53 +897,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Chimney smoke system
-    let chimneySmoke = null;
-    let chimneySmokePosArr = null;
-    let chimneySmokeDriftArr = null;
-    const chimSmokeCount = 40;
-
-    function initChimneySmoke(cx, cy, cz) {
-        if (chimneySmoke) { scene.remove(chimneySmoke); chimneySmoke = null; }
-        const sgeo = new THREE.BufferGeometry();
-        const pos = new Float32Array(chimSmokeCount * 3);
-        chimneySmokeDriftArr = new Float32Array(chimSmokeCount * 3);
-        for (let i = 0; i < chimSmokeCount; i++) {
-            pos[i*3]   = cx + (Math.random()-0.5)*0.18;
-            pos[i*3+1] = cy + Math.random()*3.5;
-            pos[i*3+2] = cz + (Math.random()-0.5)*0.18;
-            chimneySmokeDriftArr[i*3]   = (Math.random()-0.5)*0.008;
-            chimneySmokeDriftArr[i*3+2] = (Math.random()-0.5)*0.008;
-        }
-        chimneySmokePosArr = pos;
-        sgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        const sc2 = document.createElement('canvas'); sc2.width=64; sc2.height=64;
-        const sc2c = sc2.getContext('2d');
-        const sg2 = sc2c.createRadialGradient(32,32,0,32,32,32);
-        sg2.addColorStop(0,'rgba(210,210,210,0.95)'); sg2.addColorStop(1,'rgba(210,210,210,0)');
-        sc2c.fillStyle=sg2; sc2c.fillRect(0,0,64,64);
-        const smat = new THREE.PointsMaterial({ size:0.5, map: new THREE.CanvasTexture(sc2), transparent:true, opacity:0.5, depthWrite:false, blending:THREE.NormalBlending });
-        chimneySmoke = new THREE.Points(sgeo, smat);
-        chimneySmoke.userData = { cx, cy, cz };
-        scene.add(chimneySmoke);
-    }
-
-    function animateChimneySmoke(delta) {
-        if (!chimneySmoke || !chimneySmokePosArr) return;
-        const { cx, cy, cz } = chimneySmoke.userData;
-        const pos = chimneySmoke.geometry.attributes.position.array;
-        for (let i = 0; i < chimSmokeCount; i++) {
-            pos[i*3+1] += delta * 0.45;
-            pos[i*3]   += chimneySmokeDriftArr[i*3]   * delta * 28;
-            pos[i*3+2] += chimneySmokeDriftArr[i*3+2] * delta * 28;
-            if (pos[i*3+1] > cy + 4.2) {
-                pos[i*3]   = cx + (Math.random()-0.5)*0.18;
-                pos[i*3+1] = cy;
-                pos[i*3+2] = cz + (Math.random()-0.5)*0.18;
-            }
-        }
-        chimneySmoke.geometry.attributes.position.needsUpdate = true;
-    }
+    // Ceiling fan system
+    let ceilingFan = null;
 
     // Educational floating label sprite
     function makeKnowledgeSprite(text) {
@@ -1128,17 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
         roofMesh.add(fW);
         roofGroup.add(roofMesh);
 
-        // Chimney
-        const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
-        const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.5), chimneyMat);
-        chimney.position.set(l / 4, roofThickness / 2 + 0.5, -w / 4);
-        chimney.castShadow = true;
-        roofGroup.add(chimney);
-
-        // Smoke particles (animated)
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
-        initChimneySmoke(l / 4, h + 0.3 + roofLiftY + roofThickness / 2 + 1.1, -w / 4);
-
         shelterRoof.position.y = h + 0.3 + roofLiftY;
         shelterRoof.add(roofGroup);
 
@@ -1155,60 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 5. Detailed Practical Interior
-        // Interior Partition Wall (Bathroom enclosure in NW corner)
-        // Give the interior an accent color! Deep Navy Blue
-        const interiorWallMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.9 });
-        const partitionZ = new THREE.Mesh(new THREE.BoxGeometry(1.5, h, 0.1), interiorWallMat);
-        partitionZ.position.set(-l/2 + 1.5/2 + pSize, h/2 + 0.45, -w/2 + 1.5 + pSize);
-        partitionZ.castShadow = true;
-        shelterBody.add(partitionZ);
-        
-        const partitionX = new THREE.Mesh(new THREE.BoxGeometry(0.1, h, 1.5), interiorWallMat);
-        partitionX.position.set(-l/2 + 1.5 + pSize, h/2 + 0.45, -w/2 + 1.5/2 + pSize);
-        partitionX.castShadow = true;
-        shelterBody.add(partitionX);
-
-        // Kitchen Island (Center East)
-        const kitchenIslandMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 }); // Dark marble/granite
-        const islandGeo = new THREE.BoxGeometry(0.8, 0.9, 1.8);
-        const island = new THREE.Mesh(islandGeo, kitchenIslandMat);
-        island.position.set(l/4, 0.9/2 + 0.45, 0);
-        island.castShadow = true;
-        shelterBody.add(island);
-
-        // Living Room Sofa (Center West facing South)
-        const sofaMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.9 }); // Leather color
-        const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.7), sofaMat);
-        sofaSeat.position.set(-l/4 + 0.5, 0.4/2 + 0.45, 0.2);
-        sofaSeat.castShadow = true;
-        shelterBody.add(sofaSeat);
-        const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.2), sofaMat);
-        sofaBack.position.set(-l/4 + 0.5, 0.8/2 + 0.45, -0.05);
-        sofaBack.castShadow = true;
-        shelterBody.add(sofaBack);
-
-        // Modern Coffee Table in front of Sofa
-        const coffeeTableMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.8 }); // Glass/Steel look
-        const coffeeTable = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.6), coffeeTableMat);
-        coffeeTable.position.set(-l/4 + 0.5, 0.25/2 + 0.45, 0.9);
-        coffeeTable.castShadow = true;
-        shelterBody.add(coffeeTable);
-
-        // Flat Screen TV mounted on the partition wall facing the sofa
-        const tvMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1, metalness: 0.8 });
-        const tvGeo = new THREE.BoxGeometry(0.05, 0.8, 1.4);
-        const tv = new THREE.Mesh(tvGeo, tvMat);
-        tv.position.set(-l/2 + 1.5 + pSize + 0.08, h/2 + 0.45, 0.2); // Mounted on PartitionX
-        shelterBody.add(tv);
-        
-        // TV Screen glow (simulating it's turned on)
-        const screenMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // Bright blue screen
-        const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.75, 1.35), screenMat);
-        tvScreen.position.set(0.03, 0, 0);
-        tv.add(tvScreen);
-
-        // 5. Minimalist Interior
+        // 5. Minimalist Interior (Focused on Thermal Comfort)
         const trombeGeo = new THREE.BoxGeometry(l * 0.4, h * 0.8, 0.3);
         const trombeMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
         const trombeWall = new THREE.Mesh(trombeGeo, trombeMat);
@@ -1216,63 +1108,23 @@ document.addEventListener('DOMContentLoaded', () => {
         trombeWall.castShadow = true;
         shelterBody.add(trombeWall);
 
-        // Modern low-profile bed (Moved slightly to fit partitions)
-        const bedGeo = new THREE.BoxGeometry(1.8, 0.3, 1.4);
-        const bedMat = new THREE.MeshPhysicalMaterial({ color: 0xd1d5db, roughness: 0.9 });
-        const bed = new THREE.Mesh(bedGeo, bedMat);
-        bed.position.set(l/2 - 1.2, 0.45 + 0.15, -w/2 + 1.2);
-        bed.castShadow = true;
-        shelterBody.add(bed);
-
-        // Area Rug under the bed
-        const rugGeo = new THREE.PlaneGeometry(2.8, 2.2);
-        const rugMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 1.0 });
-        const rug = new THREE.Mesh(rugGeo, rugMat);
-        rug.rotation.x = -Math.PI / 2;
-        rug.position.set(l/2 - 1.5, 0.455, 0);
-        rug.receiveShadow = true;
-        shelterBody.add(rug);
-
-        // Modern Desk and Chair against West Wall
-        const woodMat = new THREE.MeshPhysicalMaterial({ color: 0x8b5a2b, roughness: 0.7 });
-        const deskTop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 1.4), woodMat);
-        deskTop.position.set(-l/2 + 0.6, 0.45 + 0.75, 0);
-        deskTop.castShadow = true;
-        shelterBody.add(deskTop);
-        // Desk legs
-        for(let z of [-0.65, 0.65]) {
-            const dLeg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.05), pillarMat);
-            dLeg.position.set(-l/2 + 0.6, 0.45 + 0.375, z);
-            dLeg.castShadow = true;
-            shelterBody.add(dLeg);
+        // Ceiling Fan for CFD airflow animation
+        ceilingFan = new THREE.Group();
+        const fanMotor = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 16), new THREE.MeshStandardMaterial({color: 0x333333}));
+        fanMotor.rotation.x = Math.PI / 2;
+        ceilingFan.add(fanMotor);
+        const bladeGeo = new THREE.BoxGeometry(1.2, 0.02, 0.1);
+        const bladeMat = new THREE.MeshStandardMaterial({color: 0xe5e7eb});
+        for (let i = 0; i < 3; i++) {
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.position.x = 0.6;
+            const pivot = new THREE.Group();
+            pivot.rotation.y = (i * Math.PI * 2) / 3;
+            pivot.add(blade);
+            ceilingFan.add(pivot);
         }
-        
-        // Desk Chair
-        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.4), pillarMat);
-        chairSeat.position.set(-l/2 + 1.2, 0.45 + 0.45, 0);
-        chairSeat.castShadow = true;
-        shelterBody.add(chairSeat);
-        const chairLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), pillarMat);
-        chairLeg.position.set(-l/2 + 1.2, 0.45 + 0.225, 0);
-        chairLeg.castShadow = true;
-        shelterBody.add(chairLeg);
-
-        // Potted Plant in the corner
-        const potMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
-        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.15, 0.4, 16), potMat);
-        pot.position.set(-l/2 + 0.5, 0.45 + 0.2, w/2 - 0.5);
-        pot.castShadow = true;
-        shelterBody.add(pot);
-        
-        const plantMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.8 });
-        const plant1 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), plantMat);
-        plant1.position.set(-l/2 + 0.5, 0.45 + 0.6, w/2 - 0.5);
-        plant1.castShadow = true;
-        shelterBody.add(plant1);
-        const plant2 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), plantMat);
-        plant2.position.set(-l/2 + 0.65, 0.45 + 0.45, w/2 - 0.35);
-        plant2.castShadow = true;
-        shelterBody.add(plant2);
+        ceilingFan.position.set(0, h + 0.45 - 0.2, 0);
+        shelterBody.add(ceilingFan);
 
         // Exterior Touch-Up: Entrance Steps
         const stepMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
