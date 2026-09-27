@@ -1773,4 +1773,114 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial calculation run
     recalculateThermalSimulation();
-});
+
+
+    // ==========================================
+    // 10. AI Generative Mode
+    // ==========================================
+    const modeManual = document.getElementById('modeManual');
+    const modeAI = document.getElementById('modeAI');
+    const aiOverlay = document.getElementById('aiOverlay');
+    const aiInput = document.getElementById('aiInput');
+    const aiSubmit = document.getElementById('aiSubmit');
+    const aiMessages = document.getElementById('aiMessages');
+
+    if (modeManual && modeAI && aiOverlay) {
+        modeManual.addEventListener('click', () => {
+            modeManual.classList.add('active');
+            modeAI.classList.remove('active');
+            aiOverlay.classList.add('hidden');
+        });
+
+        modeAI.addEventListener('click', () => {
+            modeAI.classList.add('active');
+            modeManual.classList.remove('active');
+            aiOverlay.classList.remove('hidden');
+            aiInput.focus();
+        });
+
+        function addAiMessage(text, isUser = false) {
+            const msg = document.createElement('div');
+            msg.className = 'ai-msg' + (isUser ? ' user' : '');
+            msg.textContent = text;
+            aiMessages.appendChild(msg);
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
+
+        function triggerAiGeneration(promptStr) {
+            const p = promptStr.toLowerCase();
+            let changed = false;
+
+            // Simple mock AI parsing based on keywords
+            if (p.includes('desert') || p.includes('hot') || p.includes('sand')) {
+                archStyle.value = 'courtyard';
+                paramFloors.value = 1; valFloors.value = 1;
+                paramLength.value = 12; valLength.value = 12;
+                paramWidth.value = 12; valWidth.value = 12;
+                wallMaterial.value = 'rammed_earth';
+                roofType.value = 'cool_roof';
+                glazingRatio.value = '15';
+                changed = true;
+            } else if (p.includes('snow') || p.includes('mountain') || p.includes('cold') || p.includes('alpine') || p.includes('hill')) {
+                archStyle.value = 'a_frame';
+                paramFloors.value = 2; valFloors.value = 2;
+                paramLength.value = 6; valLength.value = 6;
+                paramWidth.value = 5; valWidth.value = 5;
+                wallMaterial.value = 'timber';
+                roofType.value = 'sloped_solar';
+                glazingRatio.value = '25';
+                changed = true;
+            } else if (p.includes('flood') || p.includes('water') || p.includes('tropic') || p.includes('stilt')) {
+                archStyle.value = 'stilted';
+                paramFloors.value = 1; valFloors.value = 1;
+                paramLength.value = 8; valLength.value = 8;
+                paramWidth.value = 5; valWidth.value = 5;
+                wallMaterial.value = 'bamboo';
+                roofType.value = 'green_roof';
+                changed = true;
+            } else if (p.includes('tall') || p.includes('big') || p.includes('large') || p.includes('mansion')) {
+                archStyle.value = 'modern_box';
+                paramFloors.value = 4; valFloors.value = 4;
+                paramLength.value = 15; valLength.value = 15;
+                paramWidth.value = 10; valWidth.value = 10;
+                wallMaterial.value = 'concrete';
+                glazingRatio.value = '40';
+                changed = true;
+            }
+
+            if (changed) {
+                setTimeout(() => {
+                    addAiMessage("I have analyzed your request. I've automatically set the architectural typology, adjusted the dimensions, and selected optimal thermal materials for this climate. Generating your 3D digital twin now...");
+                    updateGeometry();
+                    showToast('AI Auto-Design Complete');
+                }, 1000);
+            } else {
+                setTimeout(() => {
+                    addAiMessage("I didn't detect specific climate or size keywords (try 'desert', 'snow', 'tall', etc.). I'll build a standard balanced home.");
+                    archStyle.value = 'modern_box';
+                    paramFloors.value = 2; valFloors.value = 2;
+                    paramLength.value = 8; valLength.value = 8;
+                    paramWidth.value = 6; valWidth.value = 6;
+                    updateGeometry();
+                }, 1000);
+            }
+        }
+
+        aiSubmit.addEventListener('click', () => {
+            const text = aiInput.value.trim();
+            if (!text) return;
+            addAiMessage(text, true);
+            aiInput.value = '';
+            
+            // "Thinking" delay
+            setTimeout(() => {
+                triggerAiGeneration(text);
+            }, 600);
+        });
+
+        aiInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') aiSubmit.click();
+        });
+    }
+
+}); // END OF DOMContentLoaded

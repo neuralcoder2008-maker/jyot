@@ -424,10 +424,33 @@
                                     <button class="cam-btn" id="camReset" title="Reset View">Reset</button>
                                 </div>
                             </div>
+
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Design Mode:</span>
+                                <div class="cam-presets" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #bfdbfe;">
+                                    <button class="cam-btn active" id="modeManual">Manual Settings</button>
+                                    <button class="cam-btn" id="modeAI" style="color: #2563eb; font-weight: 600;">✨ AI Generative Auto</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="card-body no-padding">
-                            <div id="threeContainer" class="three-canvas-container">
+                            <div id="threeContainer" class="three-canvas-container" style="position: relative;">
+                                
+                                <!-- Generative AI Chat Overlay -->
+                                <div id="aiOverlay" class="ai-overlay hidden">
+                                    <div class="ai-chat-box">
+                                        <div class="ai-header">✨ AI Architect (Auto-Builder)</div>
+                                        <div class="ai-messages" id="aiMessages">
+                                            <div class="ai-msg">Hi! I am your AI Architect. Describe the environment or type of shelter you need, and I'll automatically set all the parameters and build it for you.</div>
+                                            <div class="ai-msg prompt-hint">Try: "Build a tall house for the snowy mountains" or "I need a large courtyard home for a desert"</div>
+                                        </div>
+                                        <div class="ai-input-row">
+                                            <input type="text" id="aiInput" placeholder="Type a prompt to auto-generate a house..." autocomplete="off">
+                                            <button id="aiSubmit">Generate</button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="canvas-overlay-badges">
                                     <div class="overlay-item">
                                         <span class="dot yellow"></span>
