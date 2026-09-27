@@ -1811,52 +1811,70 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = promptStr.toLowerCase();
             let changed = false;
 
-            // Simple mock AI parsing based on keywords
-            if (p.includes('desert') || p.includes('hot') || p.includes('sand')) {
+            // 1. Extract Floor Count (e.g., "two floor", "3 floors")
+            let matchFloors = p.match(/(?:([0-9]+)|(one|two|three|four|five))\s*floor/);
+            let floors = null;
+            if (matchFloors) {
+                if (matchFloors[1]) floors = parseInt(matchFloors[1]);
+                else {
+                    const words = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 };
+                    floors = words[matchFloors[2]];
+                }
+            }
+
+            // 2. Base Climate & Architectural Recognition
+            if (p.includes('desert') || p.includes('hot') || p.includes('sand') || p.includes('rajasthan') || p.includes('rajeshtan')) {
                 archStyle.value = 'courtyard';
-                paramFloors.value = 1; valFloors.value = 1;
+                paramFloors.value = floors || 1; valFloors.value = floors || 1;
                 paramLength.value = 12; valLength.value = 12;
                 paramWidth.value = 12; valWidth.value = 12;
                 wallMaterial.value = 'rammed_earth';
                 roofType.value = 'cool_roof';
                 glazingRatio.value = '15';
                 changed = true;
-            } else if (p.includes('snow') || p.includes('mountain') || p.includes('cold') || p.includes('alpine') || p.includes('hill')) {
+            } else if (p.includes('snow') || p.includes('mountain') || p.includes('cold') || p.includes('alpine') || p.includes('hill') || p.includes('kashmir') || p.includes('himalaya')) {
                 archStyle.value = 'a_frame';
-                paramFloors.value = 2; valFloors.value = 2;
+                paramFloors.value = floors || 2; valFloors.value = floors || 2;
                 paramLength.value = 6; valLength.value = 6;
                 paramWidth.value = 5; valWidth.value = 5;
                 wallMaterial.value = 'timber';
                 roofType.value = 'sloped_solar';
                 glazingRatio.value = '25';
                 changed = true;
-            } else if (p.includes('flood') || p.includes('water') || p.includes('tropic') || p.includes('stilt')) {
+            } else if (p.includes('flood') || p.includes('water') || p.includes('tropic') || p.includes('stilt') || p.includes('kerala') || p.includes('rain')) {
                 archStyle.value = 'stilted';
-                paramFloors.value = 1; valFloors.value = 1;
+                paramFloors.value = floors || 1; valFloors.value = floors || 1;
                 paramLength.value = 8; valLength.value = 8;
                 paramWidth.value = 5; valWidth.value = 5;
                 wallMaterial.value = 'bamboo';
                 roofType.value = 'green_roof';
                 changed = true;
-            } else if (p.includes('tall') || p.includes('big') || p.includes('large') || p.includes('mansion')) {
+            } else if (p.includes('tall') || p.includes('big') || p.includes('large') || p.includes('mansion') || floors > 2) {
                 archStyle.value = 'modern_box';
-                paramFloors.value = 4; valFloors.value = 4;
+                paramFloors.value = floors || 4; valFloors.value = floors || 4;
                 paramLength.value = 15; valLength.value = 15;
                 paramWidth.value = 10; valWidth.value = 10;
                 wallMaterial.value = 'concrete';
                 glazingRatio.value = '40';
                 changed = true;
+            } else if (floors) {
+                // User only specified floors but no style
+                archStyle.value = 'modern_box';
+                paramFloors.value = floors; valFloors.value = floors;
+                paramLength.value = 8; valLength.value = 8;
+                paramWidth.value = 6; valWidth.value = 6;
+                changed = true;
             }
 
             if (changed) {
                 setTimeout(() => {
-                    addAiMessage("I have analyzed your request. I've automatically set the architectural typology, adjusted the dimensions, and selected optimal thermal materials for this climate. Generating your 3D digital twin now...");
+                    addAiMessage("I've analyzed your prompt. I've automatically set the architectural typology, adjusted the dimensions" + (floors ? ` (to ${floors} floors)` : "") + ", and selected optimal thermal materials for this environment. Generating your 3D digital twin now...");
                     updateGeometry();
                     showToast('AI Auto-Design Complete');
                 }, 1000);
             } else {
                 setTimeout(() => {
-                    addAiMessage("I didn't detect specific climate or size keywords (try 'desert', 'snow', 'tall', etc.). I'll build a standard balanced home.");
+                    addAiMessage("I didn't detect specific climate, location (like Rajasthan, Himalaya), or size keywords. I'll build a standard balanced home instead.");
                     archStyle.value = 'modern_box';
                     paramFloors.value = 2; valFloors.value = 2;
                     paramLength.value = 8; valLength.value = 8;
