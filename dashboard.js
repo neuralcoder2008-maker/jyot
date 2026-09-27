@@ -298,11 +298,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const valLength = document.getElementById('valLength');
     const valWidth = document.getElementById('valWidth');
     const valHeight = document.getElementById('valHeight');
+    const paramFloors = document.getElementById('paramFloors');
+    const valFloors = document.getElementById('valFloors');
+    
     const valOrientation = document.getElementById('valOrientation');
     const valSunHour = document.getElementById('valSunHour');
     
     const paramMonth = document.getElementById('paramMonth');
     const valMonth = document.getElementById('valMonth');
+
+    const archStyle = document.getElementById('archStyle');
 
     const wallMaterial = document.getElementById('wallMaterial');
     const roofType = document.getElementById('roofType');
@@ -936,135 +941,200 @@ document.addEventListener('DOMContentLoaded', () => {
         const pillarMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 }); // Dark steel
         const interiorFloorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2, metalness: 0.2 });
 
+        // Configuration Modifiers
+        const numFloors = parseInt(paramFloors.value) || 1;
+        const style = archStyle ? archStyle.value : 'modern_box';
+
+        let foundationLift = 0;
+        if (style === 'stilted') foundationLift = 2.0;
+
         // 1. Foundation Slab (Wide platform)
-        const platformOverhang = 1.5;
+        const platformOverhang = (style === 'a_frame') ? 0.2 : 1.5;
         const slabGeo = new THREE.BoxGeometry(l + platformOverhang * 2, 0.4, w + platformOverhang * 2);
         const slab = new THREE.Mesh(slabGeo, mats.slabMat);
-        slab.position.y = 0.2;
+        slab.position.y = 0.2 + foundationLift;
         slab.castShadow = true;
         slab.receiveShadow = true;
         shelterBody.add(slab);
 
-        // 1.5 Inner Wooden Floor
-        const floorGeo = new THREE.BoxGeometry(l, 0.05, w);
-        const floor = new THREE.Mesh(floorGeo, interiorFloorMat);
-        floor.position.set(0, 0.425, 0);
-        floor.receiveShadow = true;
-        shelterBody.add(floor);
-
-        // 2. Corner Steel Pillars
-        const pSize = 0.2;
-        const pillarGeo = new THREE.BoxGeometry(pSize, h, pSize);
-        const pillarPositions = [
-            [-l/2 + pSize/2, -w/2 + pSize/2],
-            [l/2 - pSize/2, -w/2 + pSize/2],
-            [l/2 - pSize/2, w/2 - pSize/2],
-            [-l/2 + pSize/2, w/2 - pSize/2]
-        ];
-
-        pillarPositions.forEach(pos => {
-            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-            pillar.position.set(pos[0], h/2 + 0.45, pos[1]);
-            pillar.castShadow = true;
-            shelterBody.add(pillar);
-        });
-
-        // 3. Walls & Glass Envelope (Recessed slightly)
-        const wallThickness = 0.15;
-        const wwrRatio = parseFloat(glazingRatio.value) / 100;
-        
-        // North Wall (Solid)
-        const nWallGeo = new THREE.BoxGeometry(l - pSize*2, h, wallThickness);
-        const nWall = new THREE.Mesh(nWallGeo, mats.wallMat);
-        nWall.position.set(0, h/2 + 0.45, -w/2 + wallThickness/2);
-        nWall.castShadow = true;
-        shelterBody.add(nWall);
-
-        // East & West Walls (Solid)
-        const ewWallGeo = new THREE.BoxGeometry(wallThickness, h, w - pSize*2);
-        const wWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
-        wWall.position.set(-l/2 + wallThickness/2, h/2 + 0.45, 0);
-        wWall.castShadow = true;
-        shelterBody.add(wWall);
-
-        const eWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
-        eWall.position.set(l/2 - wallThickness/2, h/2 + 0.45, 0);
-        eWall.castShadow = true;
-        shelterBody.add(eWall);
-
-        // South Facade: Glass walls split for a prominent center entrance door
-        const glassW = l - pSize*2;
-        const doorWidth = 1.2;
-        const doorHeight = 2.2;
-        
-        // Glass left of door
-        const glassSideGeo = new THREE.BoxGeometry((glassW - doorWidth)/2, h, 0.05);
-        const glassLeft = new THREE.Mesh(glassSideGeo, mats.glassMat);
-        glassLeft.position.set(-glassW/2 + glassSideGeo.parameters.width/2, h/2 + 0.45, w/2 - wallThickness/2);
-        shelterBody.add(glassLeft);
-        
-        // Glass right of door
-        const glassRight = new THREE.Mesh(glassSideGeo, mats.glassMat);
-        glassRight.position.set(glassW/2 - glassSideGeo.parameters.width/2, h/2 + 0.45, w/2 - wallThickness/2);
-        shelterBody.add(glassRight);
-
-        // Glass header above door
-        const headerH = h - doorHeight;
-        if (headerH > 0) {
-            const glassHeaderGeo = new THREE.BoxGeometry(doorWidth, headerH, 0.05);
-            const glassHeader = new THREE.Mesh(glassHeaderGeo, mats.glassMat);
-            glassHeader.position.set(0, h - headerH/2 + 0.45, w/2 - wallThickness/2);
-            shelterBody.add(glassHeader);
+        if (style === 'stilted') {
+            const stiltGeo = new THREE.CylinderGeometry(0.15, 0.15, 2.0, 16);
+            const stiltMat = new THREE.MeshStandardMaterial({color: 0x8b5a2b});
+            const corners = [
+                [-l/2, -w/2], [l/2, -w/2], [l/2, w/2], [-l/2, w/2]
+            ];
+            corners.forEach(pos => {
+                const stilt = new THREE.Mesh(stiltGeo, stiltMat);
+                stilt.position.set(pos[0], 1.0, pos[1]);
+                stilt.castShadow = true;
+                shelterBody.add(stilt);
+            });
         }
 
-        // Heavy Modern Wood Front Door (Interactive)
-        doorGroup = new THREE.Group();
-        // Position doorGroup at the hinge (left side of the door opening)
-        doorGroup.position.set(-doorWidth/2, 0.45, w/2 - wallThickness/2);
-        doorGroup.userData.isOpen = false;
+        const wallThickness = 0.15;
+        const pSize = 0.2;
         
-        const doorLeafGeo = new THREE.BoxGeometry(doorWidth - 0.05, doorHeight, 0.15);
-        const doorLeaf = new THREE.Mesh(doorLeafGeo, mats.doorMat);
-        // Offset the leaf so it swings around the hinge
-        doorLeaf.position.set(doorWidth/2, doorHeight/2, 0);
-        doorLeaf.castShadow = true;
-        doorGroup.add(doorLeaf);
+        for (let f = 0; f < numFloors; f++) {
+            const floorYOffset = foundationLift + 0.4 + (f * h);
+            
+            // 1.5 Inner Floor for this story
+            const floorGeo = new THREE.BoxGeometry(l, 0.05, w);
+            const floor = new THREE.Mesh(floorGeo, interiorFloorMat);
+            floor.position.set(0, floorYOffset + 0.025, 0);
+            floor.receiveShadow = true;
+            shelterBody.add(floor);
 
-        // Large vertical modern handle
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.1 });
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), handleMat);
-        handle.position.set(doorWidth - 0.15, doorHeight/2, 0.12);
-        doorGroup.add(handle);
+            // 2. Corner Steel Pillars
+            const pillarGeo = new THREE.BoxGeometry(pSize, h, pSize);
+            const pillarPositions = [
+                [-l/2 + pSize/2, -w/2 + pSize/2],
+                [l/2 - pSize/2, -w/2 + pSize/2],
+                [l/2 - pSize/2, w/2 - pSize/2],
+                [-l/2 + pSize/2, w/2 - pSize/2]
+            ];
+            pillarPositions.forEach(pos => {
+                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+                pillar.position.set(pos[0], floorYOffset + h/2, pos[1]);
+                pillar.castShadow = true;
+                shelterBody.add(pillar);
+            });
 
-        shelterBody.add(doorGroup);
+            // 3. Walls & Glass Envelope
+            const doorWidth = 1.2;
+            const doorHeight = 2.2;
+            
+            // North Wall
+            if (style === 'courtyard' && f === 0) {
+                // Courtyard hole logic - simplify by making walls thinner
+                const nWallGeo = new THREE.BoxGeometry(l - pSize*2, h, wallThickness);
+                const nWall = new THREE.Mesh(nWallGeo, mats.wallMat);
+                nWall.position.set(0, floorYOffset + h/2, -w/2 + wallThickness/2);
+                shelterBody.add(nWall);
+            } else {
+                const nWallGeo = new THREE.BoxGeometry(l - pSize*2, h, wallThickness);
+                const nWall = new THREE.Mesh(nWallGeo, mats.wallMat);
+                nWall.position.set(0, floorYOffset + h/2, -w/2 + wallThickness/2);
+                nWall.castShadow = true;
+                shelterBody.add(nWall);
+            }
 
-        // 4. Clean Flat Roof Slab (Hovering effect)
+            // East & West Walls
+            const ewWallGeo = new THREE.BoxGeometry(wallThickness, h, w - pSize*2);
+            const wWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
+            wWall.position.set(-l/2 + wallThickness/2, floorYOffset + h/2, 0);
+            wWall.castShadow = true;
+            shelterBody.add(wWall);
+
+            const eWall = new THREE.Mesh(ewWallGeo, mats.wallMat);
+            eWall.position.set(l/2 - wallThickness/2, floorYOffset + h/2, 0);
+            eWall.castShadow = true;
+            shelterBody.add(eWall);
+
+            // South Facade (Glass & Door)
+            const glassW = l - pSize*2;
+            if (f === 0) {
+                // Ground floor gets a door
+                const glassSideGeo = new THREE.BoxGeometry((glassW - doorWidth)/2, h, 0.05);
+                const glassLeft = new THREE.Mesh(glassSideGeo, mats.glassMat);
+                glassLeft.position.set(-glassW/2 + glassSideGeo.parameters.width/2, floorYOffset + h/2, w/2 - wallThickness/2);
+                shelterBody.add(glassLeft);
+                
+                const glassRight = new THREE.Mesh(glassSideGeo, mats.glassMat);
+                glassRight.position.set(glassW/2 - glassSideGeo.parameters.width/2, floorYOffset + h/2, w/2 - wallThickness/2);
+                shelterBody.add(glassRight);
+
+                const headerH = h - doorHeight;
+                if (headerH > 0) {
+                    const glassHeaderGeo = new THREE.BoxGeometry(doorWidth, headerH, 0.05);
+                    const glassHeader = new THREE.Mesh(glassHeaderGeo, mats.glassMat);
+                    glassHeader.position.set(0, floorYOffset + h - headerH/2, w/2 - wallThickness/2);
+                    shelterBody.add(glassHeader);
+                }
+
+                doorGroup = new THREE.Group();
+                doorGroup.position.set(-doorWidth/2, floorYOffset, w/2 - wallThickness/2);
+                doorGroup.userData.isOpen = false;
+                
+                const doorLeafGeo = new THREE.BoxGeometry(doorWidth - 0.05, doorHeight, 0.15);
+                const doorLeaf = new THREE.Mesh(doorLeafGeo, mats.doorMat);
+                doorLeaf.position.set(doorWidth/2, doorHeight/2, 0);
+                doorLeaf.castShadow = true;
+                doorGroup.add(doorLeaf);
+
+                const handleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.1 });
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), handleMat);
+                handle.position.set(doorWidth - 0.15, doorHeight/2, 0.12);
+                doorGroup.add(handle);
+                shelterBody.add(doorGroup);
+            } else {
+                // Upper floors get full glass facade
+                const glassGeo = new THREE.BoxGeometry(glassW, h, 0.05);
+                const glassWall = new THREE.Mesh(glassGeo, mats.glassMat);
+                glassWall.position.set(0, floorYOffset + h/2, w/2 - wallThickness/2);
+                shelterBody.add(glassWall);
+            }
+        }
+
+        // 4. Roof Construction
         const roofGroup = new THREE.Group();
         const roofThickness = 0.35;
-        const roofGeo = new THREE.BoxGeometry(l + platformOverhang * 2, roofThickness, w + platformOverhang * 2);
-        const roofMesh = new THREE.Mesh(roofGeo, mats.roofMat);
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
+        const totalBuildingH = foundationLift + 0.4 + (numFloors * h);
 
-        // Dark sleek Fascia wrapped around the roof
-        const fasciaMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3 });
-        const fasciaThick = 0.05;
-        const fN = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
-        fN.position.set(0, 0, -(w + platformOverhang*2)/2 - fasciaThick/2);
-        roofMesh.add(fN);
-        const fS = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
-        fS.position.set(0, 0, (w + platformOverhang*2)/2 + fasciaThick/2);
-        roofMesh.add(fS);
-        const fE = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
-        fE.position.set((l + platformOverhang*2)/2 + fasciaThick/2, 0, 0);
-        roofMesh.add(fE);
-        const fW = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
-        fW.position.set(-(l + platformOverhang*2)/2 - fasciaThick/2, 0, 0);
-        roofMesh.add(fW);
-        roofGroup.add(roofMesh);
+        if (style === 'a_frame') {
+            const roofHeight = w * 0.8;
+            const aFrameGeo = new THREE.CylinderGeometry(0, w/2 + 0.5, l + 0.5, 3);
+            const roofMesh = new THREE.Mesh(aFrameGeo, mats.roofMat);
+            roofMesh.rotation.z = Math.PI / 2;
+            roofMesh.rotation.x = Math.PI / 2;
+            roofMesh.position.set(0, roofHeight/2, 0);
+            roofMesh.castShadow = true;
+            roofMesh.receiveShadow = true;
+            roofGroup.add(roofMesh);
+            shelterRoof.position.y = totalBuildingH;
+            
+        } else if (style === 'courtyard') {
+            // Roof with a hole
+            const roofGeo = new THREE.BoxGeometry(l + platformOverhang * 2, roofThickness, w + platformOverhang * 2);
+            const roofMesh = new THREE.Mesh(roofGeo, mats.roofMat);
+            roofMesh.castShadow = true;
+            
+            // Add a courtyard hole (simplified visually as a dark patch on roof)
+            const holeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const hole = new THREE.Mesh(new THREE.BoxGeometry(l*0.4, roofThickness + 0.02, w*0.4), holeMat);
+            hole.position.set(0,0,0);
+            roofMesh.add(hole);
+            
+            roofGroup.add(roofMesh);
+            shelterRoof.position.y = totalBuildingH + roofThickness/2;
+            
+        } else {
+            // Standard Flat Roof
+            const roofGeo = new THREE.BoxGeometry(l + platformOverhang * 2, roofThickness, w + platformOverhang * 2);
+            const roofMesh = new THREE.Mesh(roofGeo, mats.roofMat);
+            roofMesh.castShadow = true;
+            roofMesh.receiveShadow = true;
+
+            const fasciaMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3 });
+            const fasciaThick = 0.05;
+            const fN = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
+            fN.position.set(0, 0, -(w + platformOverhang*2)/2 - fasciaThick/2);
+            roofMesh.add(fN);
+            const fS = new THREE.Mesh(new THREE.BoxGeometry(l + platformOverhang*2 + fasciaThick*2, roofThickness + 0.02, fasciaThick), fasciaMat);
+            fS.position.set(0, 0, (w + platformOverhang*2)/2 + fasciaThick/2);
+            roofMesh.add(fS);
+            const fE = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
+            fE.position.set((l + platformOverhang*2)/2 + fasciaThick/2, 0, 0);
+            roofMesh.add(fE);
+            const fW = new THREE.Mesh(new THREE.BoxGeometry(fasciaThick, roofThickness + 0.02, w + platformOverhang*2 + fasciaThick*2), fasciaMat);
+            fW.position.set(-(l + platformOverhang*2)/2 - fasciaThick/2, 0, 0);
+            roofMesh.add(fW);
+            
+            roofGroup.add(roofMesh);
+            shelterRoof.position.y = totalBuildingH + roofThickness/2;
+        }
 
         const roofLiftY = toggleExploded.checked ? 3.5 : 0;
-        shelterRoof.position.y = h + 0.3 + roofLiftY;
+        shelterRoof.position.y += roofLiftY;
         shelterRoof.add(roofGroup);
 
         if (toggleExploded.checked) {
@@ -1073,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 [-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]
             ];
             corners.forEach(pos => {
-                const pts = [new THREE.Vector3(pos[0], h + 0.3, pos[1]), new THREE.Vector3(pos[0], h + 0.3 + roofLiftY, pos[1])];
+                const pts = [new THREE.Vector3(pos[0], totalBuildingH, pos[1]), new THREE.Vector3(pos[0], totalBuildingH + roofLiftY, pos[1])];
                 const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), liftLinesMat);
                 line.computeLineDistances();
                 shelterRoof.add(line);
@@ -1429,9 +1499,13 @@ document.addEventListener('DOMContentLoaded', () => {
     syncInput(paramLength, valLength, updateGeometry);
     syncInput(paramWidth, valWidth, updateGeometry);
     syncInput(paramHeight, valHeight, updateGeometry);
+    if (paramFloors) syncInput(paramFloors, valFloors, updateGeometry);
     syncInput(paramOrientation, valOrientation, updateGeometry);
     syncInput(paramSunHour, valSunHour, updateSunPosition);
     if (paramMonth) syncInput(paramMonth, valMonth, updateGeometry);
+    if (archStyle) {
+        archStyle.addEventListener('change', updateGeometry);
+    }
 
     function getOrientationLabel(deg) {
         deg = parseInt(deg);

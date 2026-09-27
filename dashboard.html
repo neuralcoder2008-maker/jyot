@@ -244,6 +244,24 @@
 
                             <div class="slider-group">
                                 <div class="slider-label-row">
+                                    <span>Number of Floors</span>
+                                    <input type="number" id="valFloors" value="1" step="1" min="1" max="5" class="number-input">
+                                </div>
+                                <input type="range" id="paramFloors" min="1" max="5" step="1" value="1" class="range-slider">
+                            </div>
+
+                            <div class="form-row">
+                                <label for="archStyle">Architectural Typology</label>
+                                <select id="archStyle" class="form-control">
+                                    <option value="modern_box" selected>Standard Climate Box</option>
+                                    <option value="a_frame">Alpine A-Frame (Best for Hills/Snow)</option>
+                                    <option value="courtyard">Central Courtyard (Best for Desert/Arid)</option>
+                                    <option value="stilted">Stilted / Elevated (Best for Flood/Tropics)</option>
+                                </select>
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
                                     <span>Orientation (Degrees)</span>
                                     <input type="number" id="valOrientation" value="180" step="15" min="0" max="360" class="number-input">
                                 </div>
