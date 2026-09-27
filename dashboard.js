@@ -1916,7 +1916,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (archStyle.value === 'stilted') matExpl = "For this Humid/Coastal climate (like Surat), I selected high-tech blue Bio-Wax walls to absorb humidity/heat, elevated stilts for flooding, and a vibrant Green Roof.";
                     else matExpl = "For this urban environment, I selected Red Brick or Aerated Concrete for balanced thermal resistance, with large greenhouse windows for daylighting.";
 
-                    addAiMessage("I have analyzed your request for '" + p.split(' ')[0] + "...'. I designed a beautiful " + (paramFloors.value) + "-story " + archStyle.options[archStyle.selectedIndex].text + ".\\n\\n" + matExpl + "\\n\\nGenerating your colorful 3D digital twin now...");
+                    addAiMessage("I have analyzed your request for '" + p.split(' ')[0] + "...'. I designed a beautiful " + (paramFloors.value) + "-story " + archStyle.options[archStyle.selectedIndex].text + ".\n\n" + matExpl + "\n\nGenerating your colorful 3D digital twin now...");
                     updateGeometry();
                     showToast('AI Auto-Design Complete');
                 }, 1000);

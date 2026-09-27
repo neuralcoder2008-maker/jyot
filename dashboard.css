@@ -1351,3 +1351,5 @@ body {
 .ai-input-row button:hover {
     background: #1d4ed8;
 }
+
+.ai-msg { white-space: pre-wrap; }
