@@ -851,19 +851,35 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         } else {
             // Realistic Mode using advanced MeshPhysicalMaterial for maximum realism
+            // Dynamically tint walls based on architectural style for colorful realism
+            const archVal = archStyle ? archStyle.value : 'modern_box';
+            let tint = 0xffffff;
+            if (archVal === 'courtyard') tint = 0xfde68a; // Warm sunlit yellow/sand
+            if (archVal === 'a_frame') tint = 0xd1d5db; // Cool alpine gray
+            if (archVal === 'stilted') tint = 0xccfbf1; // Tropical teal/white
+            
             const wallMap = {
-                pcm_biowax:       { color: 0x38bdf8, roughness: 0.2, metalness: 0.1, clearcoat: 0.3 },
-                aerated_concrete: { color: 0xf1f5f9, roughness: 0.8, metalness: 0.05, clearcoat: 0.0 },
-                rammed_earth:     { color: 0xd4a373, roughness: 0.9, metalness: 0.0, clearcoat: 0.0 },
-                timber_frame:     { color: 0xb5835a, roughness: 0.6, metalness: 0.0, clearcoat: 0.1 },
-                brick_cavity:     { color: 0x9c413b, roughness: 0.85, metalness: 0.0, clearcoat: 0.0 },
-                galvanized_sheet: { color: 0x94a3b8, roughness: 0.4, metalness: 0.8, clearcoat: 0.5 }
+                pcm_biowax:       { color: 0x0ea5e9, roughness: 0.1, metalness: 0.2, clearcoat: 0.8 }, // Vivid blue high-tech
+                aerated_concrete: { color: 0xf8fafc, roughness: 0.9, metalness: 0.0, clearcoat: 0.0 },
+                rammed_earth:     { color: 0xd97706, roughness: 0.9, metalness: 0.0, clearcoat: 0.0 }, // Vivid terracotta
+                timber_frame:     { color: 0x9a3412, roughness: 0.7, metalness: 0.0, clearcoat: 0.1 }, // Rich dark wood
+                brick_cavity:     { color: 0xb91c1c, roughness: 0.85, metalness: 0.0, clearcoat: 0.0 }, // Vivid red brick
+                galvanized_sheet: { color: 0x94a3b8, roughness: 0.3, metalness: 0.9, clearcoat: 0.5 }
             };
+            
+            // Blend tint into the base material color
+            for (let key in wallMap) {
+                const c = new THREE.Color(wallMap[key].color);
+                const t = new THREE.Color(tint);
+                c.lerp(t, 0.4); // Blend 40% of the style tint
+                wallMap[key].color = c.getHex();
+            }
+
             const roofMap = {
-                green_roof:      { color: 0x2e5c1d, roughness: 0.9, metalness: 0.0 }, // Darker, organic green
-                cool_roof:       { color: 0xf8fafc, roughness: 0.2, metalness: 0.1, clearcoat: 0.8 }, // Highly reflective
-                sloped_solar:    { color: 0x1e3a8a, roughness: 0.3, metalness: 0.6 },
-                corrugated_iron: { color: 0x64748b, roughness: 0.6, metalness: 0.7 }
+                green_roof:      { color: 0x15803d, roughness: 1.0, metalness: 0.0 }, // Vibrant green
+                cool_roof:       { color: 0xffffff, roughness: 0.1, metalness: 0.1, clearcoat: 1.0 }, // Bright white
+                sloped_solar:    { color: 0x1e40af, roughness: 0.2, metalness: 0.8, clearcoat: 0.5 }, // Deep solar blue
+                corrugated_iron: { color: 0x475569, roughness: 0.5, metalness: 0.8 }
             };
 
             const wProp = wallMap[wallMaterial.value] || wallMap.aerated_concrete;
@@ -1826,81 +1842,87 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = promptStr.toLowerCase();
             let changed = false;
 
-            // 1. Extract Floor Count (e.g., "two floor", "3 floors")
-            let matchFloors = p.match(/(?:([0-9]+)|(one|two|three|four|five))\s*floor/);
+            // 1. Extract Floor Count
+            let matchFloors = p.match(/(?:([0-9]+)|(one|two|three|four|five|six|seven|eight|nine|ten))\s*floor/);
             let floors = null;
             if (matchFloors) {
                 if (matchFloors[1]) floors = parseInt(matchFloors[1]);
                 else {
-                    const words = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 };
+                    const words = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6 };
                     floors = words[matchFloors[2]];
                 }
             }
 
-            // 2. Base Climate & Architectural Recognition
-            if (p.includes('desert') || p.includes('hot') || p.includes('sand') || p.includes('rajasthan') || p.includes('rajeshtan')) {
+            // 2. City / Climate Recognition
+            const isDesert = p.includes('desert') || p.match(/rajasthan|jaipur|jodhpur|thar|kutch|hot|dry/);
+            const isCoastal = p.match(/surat|mumbai|chennai|kochi|kerala|goa|flood|water|tropic|coast|rain|humid/);
+            const isAlpine = p.match(/snow|mountain|cold|alpine|hill|kashmir|himalaya|shimla|ladakh/);
+            const isCity = p.match(/delhi|bangalore|pune|hyderabad|ahmedabad|tall|big|mansion|city|urban/);
+
+            if (isDesert) {
                 archStyle.value = 'courtyard';
                 paramFloors.value = floors || 1; valFloors.value = floors || 1;
                 paramLength.value = 12; valLength.value = 12;
-                paramWidth.value = 12; valWidth.value = 12;
+                paramWidth.value = 10; valWidth.value = 10;
                 wallMaterial.value = 'rammed_earth';
                 roofType.value = 'cool_roof';
                 glazingRatio.value = '15';
                 changed = true;
-            } else if (p.includes('snow') || p.includes('mountain') || p.includes('cold') || p.includes('alpine') || p.includes('hill') || p.includes('kashmir') || p.includes('himalaya')) {
+            } else if (isAlpine) {
                 archStyle.value = 'a_frame';
                 paramFloors.value = floors || 2; valFloors.value = floors || 2;
-                paramLength.value = 6; valLength.value = 6;
-                paramWidth.value = 5; valWidth.value = 5;
-                wallMaterial.value = 'timber';
+                paramLength.value = 8; valLength.value = 8;
+                paramWidth.value = 6; valWidth.value = 6;
+                wallMaterial.value = 'timber_frame';
                 roofType.value = 'sloped_solar';
                 glazingRatio.value = '25';
                 changed = true;
-            } else if (p.includes('flood') || p.includes('water') || p.includes('tropic') || p.includes('stilt') || p.includes('kerala') || p.includes('rain')) {
+            } else if (isCoastal) {
                 archStyle.value = 'stilted';
-                paramFloors.value = floors || 1; valFloors.value = floors || 1;
-                paramLength.value = 8; valLength.value = 8;
-                paramWidth.value = 5; valWidth.value = 5;
-                wallMaterial.value = 'bamboo';
+                paramFloors.value = floors || 2; valFloors.value = floors || 2;
+                paramLength.value = 10; valLength.value = 10;
+                paramWidth.value = 6; valWidth.value = 6;
+                wallMaterial.value = 'pcm_biowax'; // High tech humidity control
                 roofType.value = 'green_roof';
+                glazingRatio.value = '40';
                 changed = true;
-            } else if (p.includes('tall') || p.includes('big') || p.includes('large') || p.includes('mansion') || floors > 2) {
+            } else if (isCity || floors > 2) {
                 archStyle.value = 'modern_box';
-                paramFloors.value = floors || 4; valFloors.value = floors || 4;
-                paramLength.value = 15; valLength.value = 15;
-                paramWidth.value = 10; valWidth.value = 10;
-                wallMaterial.value = 'concrete';
+                paramFloors.value = floors || 3; valFloors.value = floors || 3;
+                paramLength.value = 12; valLength.value = 12;
+                paramWidth.value = 8; valWidth.value = 8;
+                wallMaterial.value = 'aerated_concrete';
+                roofType.value = 'sloped_solar';
                 glazingRatio.value = '40';
                 changed = true;
             } else if (floors) {
-                // User only specified floors but no style
                 archStyle.value = 'modern_box';
                 paramFloors.value = floors; valFloors.value = floors;
-                paramLength.value = 8; valLength.value = 8;
-                paramWidth.value = 6; valWidth.value = 6;
+                changed = true;
+            } else if (p.length > 2) {
+                // Generic fallback for any other word (e.g. random district)
+                archStyle.value = 'modern_box';
+                paramFloors.value = 2; valFloors.value = 2;
+                wallMaterial.value = 'brick_cavity';
+                roofType.value = 'green_roof';
                 changed = true;
             }
 
             if (changed) {
                 setTimeout(() => {
                     let matExpl = "";
-                    if (archStyle.value === 'courtyard') matExpl = "I selected Rammed Earth walls for high thermal mass to block daytime desert heat, and a Cool Roof to reflect intense solar radiation.";
-                    else if (archStyle.value === 'a_frame') matExpl = "I selected Timber walls for excellent alpine insulation, and a Sloped Solar Roof to easily shed heavy snow and capture low winter sun angles.";
-                    else if (archStyle.value === 'stilted') matExpl = "I selected lightweight Bamboo walls for rapid cross-ventilation, a Green Roof to manage heavy rain, and elevated stilts to protect against flooding.";
-                    else matExpl = "I selected Aerated Concrete for balanced thermal resistance and a high glazing ratio to maximize natural daylighting.";
+                    if (archStyle.value === 'courtyard') matExpl = "For this Hot/Arid climate, I selected vivid Terracotta Rammed Earth for high thermal mass, and a bright White Cool Roof to reflect intense solar radiation.";
+                    else if (archStyle.value === 'a_frame') matExpl = "For this Cold Alpine climate, I selected rich Dark Timber Frame walls for insulation, and a Deep Blue Sloped Solar Roof to capture winter sun angles.";
+                    else if (archStyle.value === 'stilted') matExpl = "For this Humid/Coastal climate (like Surat), I selected high-tech blue Bio-Wax walls to absorb humidity/heat, elevated stilts for flooding, and a vibrant Green Roof.";
+                    else matExpl = "For this urban environment, I selected Red Brick or Aerated Concrete for balanced thermal resistance, with large greenhouse windows for daylighting.";
 
-                    addAiMessage("I have analyzed your request. I designed a " + (floors ? floors : "1") + "-story " + archStyle.options[archStyle.selectedIndex].text + ".\n\n" + matExpl + "\n\nGenerating your 3D digital twin now...");
+                    addAiMessage("I have analyzed your request for '" + p.split(' ')[0] + "...'. I designed a beautiful " + (paramFloors.value) + "-story " + archStyle.options[archStyle.selectedIndex].text + ".
+
+" + matExpl + "
+
+Generating your colorful 3D digital twin now...");
                     updateGeometry();
                     showToast('AI Auto-Design Complete');
-                }, 1000);
-            } else {
-                setTimeout(() => {
-                    addAiMessage("I didn't detect specific climate or location keywords (like Rajasthan, Himalaya, snow, flood). I'll build a standard balanced home instead.");
-                    archStyle.value = 'modern_box';
-                    paramFloors.value = 2; valFloors.value = 2;
-                    paramLength.value = 8; valLength.value = 8;
-                    paramWidth.value = 6; valWidth.value = 6;
-                    updateGeometry();
                 }, 1000);
             }
         }
