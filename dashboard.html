@@ -289,6 +289,25 @@
                                 </select>
                             </div>
 
+                            <div class="form-row">
+                                <label for="insulationType">Insulation Material</label>
+                                <select id="insulationType" class="form-control">
+                                    <option value="polyurethane" selected>Polyurethane Foam (High R-Value, Moisture Resistant)</option>
+                                    <option value="sheep_wool">Sheep Wool (Eco-friendly, Breathable)</option>
+                                    <option value="aerogel">Aerogel Blanket (Ultra-thin Space-Grade)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label for="passiveStrategy">Passive Cooling/Heating Add-ons</label>
+                                <select id="passiveStrategy" class="form-control">
+                                    <option value="trombe_wall" selected>Trombe Wall (Passive Solar Heating)</option>
+                                    <option value="wind_catcher">Wind Catcher (Natural Ventilation & Cooling)</option>
+                                    <option value="earth_air_tunnel">Earth Air Tunnel Heat Exchanger</option>
+                                    <option value="none">None (Baseline)</option>
+                                </select>
+                            </div>
+
                             <button id="runSimBtn" class="primary-btn pulse-action">
                                 <span>⚡ Run Thermal Simulation</span>
                             </button>
