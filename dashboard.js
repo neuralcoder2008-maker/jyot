@@ -1223,26 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         path.position.set(0, 0.01, w/2 + platformOverhang + 3);
         path.receiveShadow = true;
         shelterBody.add(path);
-
-        // Landscaping: Decorative Procedural Trees
-        function createTree(x, z, scale) {
-            const tree = new THREE.Group();
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.0), new THREE.MeshStandardMaterial({color: 0x3e2723}));
-            trunk.position.y = 0.5;
-            trunk.castShadow = true;
-            tree.add(trunk);
-            const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), new THREE.MeshStandardMaterial({color: 0x166534, flatShading: true}));
-            leaves.position.y = 1.2;
-            leaves.castShadow = true;
-            tree.add(leaves);
-            tree.position.set(x, 0, z);
-            tree.scale.set(scale, scale, scale);
-            return tree;
-        }
-        
-        shelterBody.add(createTree(-6, w/2 + 2, 2.5)); // Large tree on left
-        shelterBody.add(createTree(5, w/2 + 4, 1.8));  // Medium tree on right
-        shelterBody.add(createTree(-4, -w/2 - 3, 2.0)); // Tree in back
+        // Trees removed for extreme climate realism.
 
         // 7. Dimensions and Compass
         if (toggleDimensions.checked) {
