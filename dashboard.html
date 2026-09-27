@@ -253,9 +253,17 @@
                             <div class="slider-group">
                                 <div class="slider-label-row">
                                     <span>Sun Simulation Time of Day</span>
-                                    <input type="number" id="valSunHour" value="13.0" step="0.5" min="6" max="18" class="number-input">
+                                    <input type="number" id="valSunHour" value="13.0" step="0.5" min="0" max="23.5" class="number-input">
                                 </div>
-                                <input type="range" id="paramSunHour" min="6" max="18" step="0.5" value="13.0" class="range-slider">
+                                <input type="range" id="paramSunHour" min="0" max="23.5" step="0.5" value="13.0" class="range-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label-row">
+                                    <span>Simulation Month (Season)</span>
+                                    <input type="number" id="valMonth" value="6" step="1" min="1" max="12" class="number-input">
+                                </div>
+                                <input type="range" id="paramMonth" min="1" max="12" step="1" value="6" class="range-slider">
                             </div>
 
                             <div class="form-row">

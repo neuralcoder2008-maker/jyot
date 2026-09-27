@@ -300,6 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const valHeight = document.getElementById('valHeight');
     const valOrientation = document.getElementById('valOrientation');
     const valSunHour = document.getElementById('valSunHour');
+    
+    const paramMonth = document.getElementById('paramMonth');
+    const valMonth = document.getElementById('valMonth');
 
     const wallMaterial = document.getElementById('wallMaterial');
     const roofType = document.getElementById('roofType');
@@ -440,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let shelterRoot, shelterBody, shelterRoof, dimensionGroup, environmentGroup, particleSystem;
     let sunMesh, sunLight, sunPathLine, groundMesh, compassGroup;
     let particlePositions, particleCount = 180;
+    let skyUniforms;
     
     // Interactive elements
     let doorGroup; 
@@ -519,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
             }
         `;
-        const uniforms = {
+        skyUniforms = {
             topColor: { value: new THREE.Color(0x3b82f6) },    // Deep sky blue
             bottomColor: { value: new THREE.Color(0xe0f2fe) }, // Horizon haze
             offset: { value: 33 },
@@ -529,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const skyMat = new THREE.ShaderMaterial({
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
-            uniforms: uniforms,
+            uniforms: skyUniforms,
             side: THREE.BackSide
         });
         const sky = new THREE.Mesh(skyGeo, skyMat);
@@ -1199,8 +1203,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSunPosition() {
-        const hour = parseFloat(paramSunHour.value); // 6.0 to 18.0
-        const progress = (hour - 6) / 12;
+        const hour = parseFloat(paramSunHour.value); // 0.0 to 23.5
+        const isDaytime = hour >= 6 && hour <= 18;
+        
+        let progress;
+        if (isDaytime) {
+            progress = (hour - 6) / 12; // 0 to 1 mapping
+        } else {
+            if (hour > 18) {
+                progress = 1 + (hour - 18) / 12; // 1 to 1.5 mapping
+            } else {
+                progress = -(6 - hour) / 12; // -0.5 to 0 mapping
+            }
+        }
+        
         const angle = Math.PI * progress;
 
         const radius = 26;
@@ -1210,6 +1226,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         sunLight.position.set(x, y, z);
         sunMesh.position.set(x, y, z);
+
+        if (isDaytime) {
+            sunLight.intensity = 1.8;
+            sunMesh.visible = true;
+            if (skyUniforms) {
+                skyUniforms.topColor.value.setHex(0x3b82f6);
+                skyUniforms.bottomColor.value.setHex(0xe0f2fe);
+            }
+        } else {
+            sunLight.intensity = 0.15; // Moonlight
+            sunMesh.visible = false;
+            if (skyUniforms) {
+                skyUniforms.topColor.value.setHex(0x020617); // Night sky
+                skyUniforms.bottomColor.value.setHex(0x0f172a);
+            }
+        }
 
         const elevationDeg = Math.round(Math.sin(angle) * 65);
         const azimuthDeg = Math.round(90 + progress * 180);
@@ -1332,18 +1364,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const effectiveDamping = (matBonus + roofBonus) / 2;
 
+        const monthStr = paramMonth ? paramMonth.value : "6";
+        const month = parseInt(monthStr, 10);
+        // Seasonal temperature shift approximation: Jan is coldest, July is hottest (Northern hemisphere assumption)
+        const seasonalOffset = -Math.cos((month - 1) * Math.PI / 6) * 12;
+
         const newIndoor = activePreset.diurnalOutdoor.map((outVal, idx) => {
             const solarPeak = activePreset.solarGains[idx] * (wwr / 25) * solarFactor;
             const avgOutdoor = activePreset.diurnalOutdoor.reduce((a, b) => a + b, 0) / 24;
-            const passiveOffset = (outVal - avgOutdoor) * (1 / (effectiveDamping * 1.6));
-            const calculatedIndoor = avgOutdoor + passiveOffset + (solarPeak * 0.015);
+            const seasonalOutVal = outVal + seasonalOffset;
+            const seasonalAvg = avgOutdoor + seasonalOffset;
+            
+            const passiveOffset = (seasonalOutVal - seasonalAvg) * (1 / (effectiveDamping * 1.6));
+            const calculatedIndoor = seasonalAvg + passiveOffset + (solarPeak * 0.015);
             return Number(calculatedIndoor.toFixed(1));
         });
+        
+        const newOutdoor = activePreset.diurnalOutdoor.map(val => val + seasonalOffset);
 
         const newSolar = activePreset.solarGains.map(v => Math.round(v * (wwr / 25) * solarFactor));
         const newConduction = activePreset.conductionLoss.map(v => Math.round(v / effectiveDamping));
 
-        thermalChart.data.datasets[0].data = activePreset.diurnalOutdoor;
+        thermalChart.data.datasets[0].data = newOutdoor;
         thermalChart.data.datasets[1].data = newIndoor;
         thermalChart.update();
 
@@ -1389,6 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncInput(paramHeight, valHeight, updateGeometry);
     syncInput(paramOrientation, valOrientation, updateGeometry);
     syncInput(paramSunHour, valSunHour, updateSunPosition);
+    if (paramMonth) syncInput(paramMonth, valMonth, updateGeometry);
 
     function getOrientationLabel(deg) {
         deg = parseInt(deg);
