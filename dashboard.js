@@ -1534,6 +1534,22 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Updated Window-to-Wall Ratio (WWR)');
     });
 
+    const insulationType = document.getElementById('insulationType');
+    if (insulationType) {
+        insulationType.addEventListener('change', () => {
+            recalculateThermalSimulation();
+            showToast('Updated Insulation Material');
+        });
+    }
+
+    const passiveStrategy = document.getElementById('passiveStrategy');
+    if (passiveStrategy) {
+        passiveStrategy.addEventListener('change', () => {
+            recalculateThermalSimulation();
+            showToast('Updated Passive Climate Strategy');
+        });
+    }
+
     // ==========================================
     // 9. Location & Open-Meteo Integration
     // ==========================================
