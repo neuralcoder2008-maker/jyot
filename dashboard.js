@@ -1371,29 +1371,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Sliders Listeners
-    paramLength.addEventListener('input', (e) => {
-        valLength.textContent = `${parseFloat(e.target.value).toFixed(1)} m`;
-        rebuildShelter();
-        recalculateThermalSimulation();
-    });
+    function syncInput(slider, numInput, updateFn) {
+        slider.addEventListener('input', (e) => {
+            numInput.value = e.target.value;
+            updateFn();
+        });
+        numInput.addEventListener('input', (e) => {
+            slider.value = e.target.value;
+            updateFn();
+        });
+    }
 
-    paramWidth.addEventListener('input', (e) => {
-        valWidth.textContent = `${parseFloat(e.target.value).toFixed(1)} m`;
-        rebuildShelter();
-        recalculateThermalSimulation();
-    });
-
-    paramHeight.addEventListener('input', (e) => {
-        valHeight.textContent = `${parseFloat(e.target.value).toFixed(1)} m`;
-        rebuildShelter();
-        recalculateThermalSimulation();
-    });
-
-    paramOrientation.addEventListener('input', (e) => {
-        valOrientation.textContent = `${e.target.value}° (${getOrientationLabel(e.target.value)})`;
-        rebuildShelter();
-        recalculateThermalSimulation();
-    });
+    const updateGeometry = () => { rebuildShelter(); recalculateThermalSimulation(); };
+    
+    syncInput(paramLength, valLength, updateGeometry);
+    syncInput(paramWidth, valWidth, updateGeometry);
+    syncInput(paramHeight, valHeight, updateGeometry);
+    syncInput(paramOrientation, valOrientation, updateGeometry);
+    syncInput(paramSunHour, valSunHour, updateSunPosition);
 
     function getOrientationLabel(deg) {
         deg = parseInt(deg);
@@ -1403,12 +1398,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (deg >= 345 || deg <= 15) return 'North-Facing Minimal Solar';
         return 'Angled Orientation';
     }
-
-    paramSunHour.addEventListener('input', (e) => {
-        const hr = parseFloat(e.target.value);
-        valSunHour.textContent = `${Math.floor(hr)}:${hr % 1 === 0 ? '00' : '30'} (${hr >= 11 && hr <= 14 ? 'Peak Irradiance' : 'Diurnal Transition'})`;
-        updateSunPosition();
-    });
 
     wallMaterial.addEventListener('change', () => {
         rebuildShelter();
