@@ -672,9 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
 
-        // Architectural turf podium
+        // Architectural terrain podium
         const turfGeo = new THREE.CylinderGeometry(15, 15, 0.15, 48);
-        const turfMat = new THREE.MeshStandardMaterial({ color: 0xdcfce7, roughness: 0.9 });
+        const turfMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 }); // Sand/Dirt color
         const turf = new THREE.Mesh(turfGeo, turfMat);
         turf.position.y = 0.075;
         turf.receiveShadow = true;
@@ -731,31 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             environmentGroup.remove(environmentGroup.children[0]);
         }
 
-        const treeCoords = [
-            [-10, 8], [-12, -6], [9, -9], [11, 7], [-8, -11]
-        ];
-
-        treeCoords.forEach(([x, z]) => {
-            const tree = new THREE.Group();
-            // Trunk
-            const trunkGeo = new THREE.CylinderGeometry(0.18, 0.24, 2.2, 8);
-            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.y = 1.1;
-            trunk.castShadow = true;
-            tree.add(trunk);
-
-            // Foliage Cone / Dome
-            const foliageGeo = new THREE.ConeGeometry(1.4, 3.2, 8);
-            const foliageMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
-            const foliage = new THREE.Mesh(foliageGeo, foliageMat);
-            foliage.position.y = 3.0;
-            foliage.castShadow = true;
-            tree.add(foliage);
-
-            tree.position.set(x, 0.16, z);
-            environmentGroup.add(tree);
-        });
+        // Trees removed for extreme climate realism
 
         // Architectural scale figure (Architect human silhouette)
         const personGroup = new THREE.Group();
