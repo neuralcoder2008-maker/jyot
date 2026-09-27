@@ -1082,11 +1082,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (style === 'a_frame') {
             const roofHeight = w * 0.8;
-            const aFrameGeo = new THREE.CylinderGeometry(0, w/2 + 0.5, l + 0.5, 3);
+            const shape = new THREE.Shape();
+            shape.moveTo(-w/2 - 0.5, 0);
+            shape.lineTo(w/2 + 0.5, 0);
+            shape.lineTo(0, roofHeight);
+            shape.lineTo(-w/2 - 0.5, 0);
+            
+            const extrudeSettings = { depth: l + 1.0, bevelEnabled: false };
+            const aFrameGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
             const roofMesh = new THREE.Mesh(aFrameGeo, mats.roofMat);
-            roofMesh.rotation.z = Math.PI / 2;
-            roofMesh.rotation.x = Math.PI / 2;
-            roofMesh.position.set(0, roofHeight/2, 0);
+            
+            // Extrude goes along Z. Rotate to align with house Length (X-axis)
+            roofMesh.rotation.y = Math.PI / 2;
+            roofMesh.position.set(-(l + 1.0)/2, 0, 0);
+            
             roofMesh.castShadow = true;
             roofMesh.receiveShadow = true;
             roofGroup.add(roofMesh);
@@ -1893,13 +1902,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (changed) {
                 setTimeout(() => {
-                    addAiMessage("I've analyzed your prompt. I've automatically set the architectural typology, adjusted the dimensions" + (floors ? ` (to ${floors} floors)` : "") + ", and selected optimal thermal materials for this environment. Generating your 3D digital twin now...");
+                    let matExpl = "";
+                    if (archStyle.value === 'courtyard') matExpl = "I selected Rammed Earth walls for high thermal mass to block daytime desert heat, and a Cool Roof to reflect intense solar radiation.";
+                    else if (archStyle.value === 'a_frame') matExpl = "I selected Timber walls for excellent alpine insulation, and a Sloped Solar Roof to easily shed heavy snow and capture low winter sun angles.";
+                    else if (archStyle.value === 'stilted') matExpl = "I selected lightweight Bamboo walls for rapid cross-ventilation, a Green Roof to manage heavy rain, and elevated stilts to protect against flooding.";
+                    else matExpl = "I selected Aerated Concrete for balanced thermal resistance and a high glazing ratio to maximize natural daylighting.";
+
+                    addAiMessage("I have analyzed your request. I designed a " + (floors ? floors : "1") + "-story " + archStyle.options[archStyle.selectedIndex].text + ".\n\n" + matExpl + "\n\nGenerating your 3D digital twin now...");
                     updateGeometry();
                     showToast('AI Auto-Design Complete');
                 }, 1000);
             } else {
                 setTimeout(() => {
-                    addAiMessage("I didn't detect specific climate, location (like Rajasthan, Himalaya), or size keywords. I'll build a standard balanced home instead.");
+                    addAiMessage("I didn't detect specific climate or location keywords (like Rajasthan, Himalaya, snow, flood). I'll build a standard balanced home instead.");
                     archStyle.value = 'modern_box';
                     paramFloors.value = 2; valFloors.value = 2;
                     paramLength.value = 8; valLength.value = 8;
