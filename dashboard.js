@@ -1690,14 +1690,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 12. Saved Design Vault (localStorage)
     // ==========================================
     const DEFAULT_DESIGNS = [
-        { name: "Himalayan Cold Shelter v1", region: "Shimla", length: "6.0", width: "4.0", height: "3.0", date: "2026-09-01" },
-        { name: "Thar Desert Passive Habitat", region: "Jodhpur", length: "8.0", width: "5.0", height: "3.2", date: "2026-09-03" }
+        { name: "Assam Flood Relief Camp", region: "Guwahati", length: "8.0", width: "5.0", height: "2.8", floors: 1, style: "stilted", wall: "timber", roof: "corrugated_iron", date: "2026-09-27" },
+        { name: "Gujarat Earthquake Temp Housing", region: "Bhuj", length: "6.0", width: "4.0", height: "2.5", floors: 1, style: "modern_box", wall: "aerated_concrete", roof: "cool_roof", date: "2026-09-27" },
+        { name: "Rajasthan Heat Wave Slum Upgrade", region: "Jaipur", length: "10.0", width: "8.0", height: "3.0", floors: 1, style: "courtyard", wall: "rammed_earth", roof: "cool_roof", date: "2026-09-27" },
+        { name: "Kashmir Winter Survival", region: "Srinagar", length: "7.0", width: "5.0", height: "3.5", floors: 2, style: "a_frame", wall: "timber", roof: "sloped_solar", date: "2026-09-27" },
+        { name: "Kerala Coastal Monsoon Shelter", region: "Kochi", length: "12.0", width: "6.0", height: "3.2", floors: 2, style: "stilted", wall: "rammed_earth", roof: "green_roof", date: "2026-09-27" }
     ];
 
     function getSavedDesigns() {
-        const stored = localStorage.getItem('thermal_saved_designs');
+        const stored = localStorage.getItem('thermal_saved_designs_v2');
         if (!stored) {
-            localStorage.setItem('thermal_saved_designs', JSON.stringify(DEFAULT_DESIGNS));
+            localStorage.setItem('thermal_saved_designs_v2', JSON.stringify(DEFAULT_DESIGNS));
             return DEFAULT_DESIGNS;
         }
         try {
@@ -1729,15 +1732,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const idx = parseInt(e.target.getAttribute('data-index'));
                 const design = getSavedDesigns()[idx];
                 if (design) {
-                    paramLength.value = design.length;
-                    valLength.textContent = `${design.length} m`;
-                    paramWidth.value = design.width;
-                    valWidth.textContent = `${design.width} m`;
-                    paramHeight.value = design.height;
-                    valHeight.textContent = `${design.height} m`;
-                    rebuildShelter();
-                    recalculateThermalSimulation();
-                    showToast(`Restored design: ${design.name}`);
+                    paramLength.value = design.length || 6; valLength.value = design.length || 6;
+                    paramWidth.value = design.width || 4; valWidth.value = design.width || 4;
+                    paramHeight.value = design.height || 3; valHeight.value = design.height || 3;
+                    
+                    if (design.floors) { paramFloors.value = design.floors; valFloors.value = design.floors; }
+                    if (design.style) archStyle.value = design.style;
+                    if (design.wall) wallMaterial.value = design.wall;
+                    if (design.roof) roofType.value = design.roof;
+                    
+                    updateGeometry();
+                    showToast(`Restored Critical State design: ${design.name}`);
                 }
             });
         });
@@ -1746,15 +1751,19 @@ document.addEventListener('DOMContentLoaded', () => {
     saveDesignBtn.addEventListener('click', () => {
         const list = getSavedDesigns();
         const newDesign = {
-            name: `Design #${list.length + 1} (${activePreset.name.split(',')[0]})`,
+            name: `Custom Design #${list.length + 1} (${activePreset.name.split(',')[0]})`,
             region: activePreset.name.split(',')[0],
             length: parseFloat(paramLength.value).toFixed(1),
             width: parseFloat(paramWidth.value).toFixed(1),
             height: parseFloat(paramHeight.value).toFixed(1),
+            floors: parseInt(paramFloors.value) || 1,
+            style: archStyle ? archStyle.value : 'modern_box',
+            wall: wallMaterial.value,
+            roof: roofType.value,
             date: new Date().toLocaleDateString()
         };
         list.unshift(newDesign);
-        localStorage.setItem('thermal_saved_designs', JSON.stringify(list));
+        localStorage.setItem('thermal_saved_designs_v2', JSON.stringify(list));
         renderSavedDesigns();
         showToast('Design successfully saved to local architectural vault!');
     });
