@@ -1689,23 +1689,55 @@ document.addEventListener('DOMContentLoaded', () => {
         optimizationModal.classList.remove('open');
     });
 
-    applyOptCandidateBtn.addEventListener('click', () => {
-        paramOrientation.value = 180;
-        valOrientation.textContent = '180° (South-Facing Sun Optimum)';
-        paramLength.value = 7.0;
-        valLength.textContent = '7.0 m';
-        paramWidth.value = 4.5;
-        valWidth.textContent = '4.5 m';
-        paramHeight.value = 2.8;
-        valHeight.textContent = '2.8 m';
-        wallMaterial.value = 'aerated_concrete';
-        roofType.value = 'green_roof';
-        glazingRatio.value = '25';
+    applyOptCandidateBtn.addEventListener('click', async () => {
+        applyOptCandidateBtn.disabled = true;
+        applyOptCandidateBtn.innerHTML = '<span>⏳ Contacting AI Optimization Engine...</span>';
+        
+        try {
+            const response = await fetch('http://localhost:3000/optimize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    climateName: activePreset.name,
+                    temp: activePreset.temp,
+                    humidity: activePreset.humidity,
+                    solar: activePreset.solar,
+                    wind: activePreset.wind
+                })
+            });
+            
+            if (!response.ok) throw new Error('API request failed');
+            
+            const aiResult = await response.json();
+            if (aiResult.error) throw new Error(aiResult.error);
+            
+            paramOrientation.value = aiResult.orientation;
+            valOrientation.value = aiResult.orientation;
+            
+            paramLength.value = aiResult.length;
+            valLength.value = aiResult.length;
+            
+            paramWidth.value = aiResult.width;
+            valWidth.value = aiResult.width;
+            
+            paramHeight.value = aiResult.height;
+            valHeight.value = aiResult.height;
+            
+            wallMaterial.value = aiResult.wallMaterial;
+            roofType.value = aiResult.roofType;
+            glazingRatio.value = aiResult.glazingRatio;
 
-        optimizationModal.classList.remove('open');
-        rebuildShelter();
-        recalculateThermalSimulation();
-        showToast('Applied Top-Ranked AI Optimization Configuration!');
+            optimizationModal.classList.remove('open');
+            rebuildShelter();
+            recalculateThermalSimulation();
+            showToast(`AI Design Applied: ${aiResult.rationale}`);
+        } catch (err) {
+            console.error('AI Opt Error:', err);
+            showToast('Failed to reach AI Engine. Ensure Python backend is running.');
+        } finally {
+            applyOptCandidateBtn.disabled = false;
+            applyOptCandidateBtn.innerHTML = '<span>Apply Optimal Candidate</span>';
+        }
     });
 
     // ==========================================
