@@ -450,6 +450,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let particlePositions, particleCount = 180;
     let skyUniforms;
     
+    // Dynamic Climate Weather Systems (Snow & Wind)
+    let currentBiome = 'desert';
+    let snowSystem = null, snowPositions = null, snowVelocities = null;
+    const snowFlakeCount = 650;
+
     // Interactive door system
     let doorGroup; 
     let doorPivot = null;
@@ -609,8 +614,9 @@ document.addEventListener('DOMContentLoaded', () => {
         environmentGroup = new THREE.Group();
         scene.add(environmentGroup);
 
-        // Animated Wind Particle System
+        // Animated Wind & Snow Climate Particle Systems
         initWindParticles();
+        initSnowfallSystem();
 
         updateSunPosition();
         rebuildShelter();
@@ -668,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const delta = clock.getDelta();
             animateWindParticles(delta);
+            animateSnowfall(delta);
             if (ceilingFan) ceilingFan.rotation.y += 5 * delta;
 
             // Smooth architectural door hinge rotation
@@ -763,6 +770,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.rebuildEnvironment = function(biome) {
+        currentBiome = biome;
+        if (snowSystem) snowSystem.visible = (biome === 'snow');
+
         // Clear all previous environment objects safely
         while (environmentGroup.children.length > 0) {
             const obj = environmentGroup.children[0];
@@ -1120,8 +1130,19 @@ document.addEventListener('DOMContentLoaded', () => {
         environmentGroup.add(personGroup);
     };
 
-    // CFD Wind Streamlines
+    // CFD Wind Streamlines (Smooth circular aerodynamic particles)
     function initWindParticles() {
+        const wCanvas = document.createElement('canvas');
+        wCanvas.width = 32; wCanvas.height = 32;
+        const wCtx = wCanvas.getContext('2d');
+        const wGrad = wCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        wGrad.addColorStop(0, 'rgba(6, 182, 212, 0.95)');
+        wGrad.addColorStop(0.4, 'rgba(6, 182, 212, 0.45)');
+        wGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+        wCtx.fillStyle = wGrad;
+        wCtx.fillRect(0, 0, 32, 32);
+        const windTexture = new THREE.CanvasTexture(wCanvas);
+
         const pGeo = new THREE.BufferGeometry();
         particlePositions = new Float32Array(particleCount * 3);
 
@@ -1134,9 +1155,12 @@ document.addEventListener('DOMContentLoaded', () => {
         pGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
         const pMat = new THREE.PointsMaterial({
             color: 0x06b6d4,
-            size: 0.22,
+            size: 0.28,
+            map: windTexture,
             transparent: true,
-            opacity: 0.75
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
 
         particleSystem = new THREE.Points(pGeo, pMat);
@@ -1151,8 +1175,8 @@ document.addEventListener('DOMContentLoaded', () => {
         particleSystem.visible = true;
 
         const positions = particleSystem.geometry.attributes.position.array;
-        const speed = activePreset.windSpeedVal * 1.5;
-        const angleRad = THREE.MathUtils.degToRad(activePreset.windAngleDeg);
+        const speed = (activePreset ? activePreset.windSpeedVal : 3.0) * 1.5;
+        const angleRad = THREE.MathUtils.degToRad(activePreset ? activePreset.windAngleDeg : 45);
         const vx = Math.sin(angleRad) * speed * delta;
         const vz = Math.cos(angleRad) * speed * delta;
 
@@ -1167,6 +1191,76 @@ document.addEventListener('DOMContentLoaded', () => {
             if (positions[i * 3 + 2] < -16) positions[i * 3 + 2] = 16;
         }
         particleSystem.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Realistic Falling Snow & Ice Crystals System for Alpine / Cold Climate
+    function initSnowfallSystem() {
+        const sCanvas = document.createElement('canvas');
+        sCanvas.width = 32; sCanvas.height = 32;
+        const sCtx = sCanvas.getContext('2d');
+        const sGrad = sCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        sGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+        sGrad.addColorStop(0.3, 'rgba(224, 242, 254, 0.8)');
+        sGrad.addColorStop(0.7, 'rgba(186, 230, 253, 0.35)');
+        sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        sCtx.fillStyle = sGrad;
+        sCtx.fillRect(0, 0, 32, 32);
+        const snowTexture = new THREE.CanvasTexture(sCanvas);
+
+        const sGeo = new THREE.BufferGeometry();
+        snowPositions = new Float32Array(snowFlakeCount * 3);
+        snowVelocities = new Float32Array(snowFlakeCount * 3);
+
+        for (let i = 0; i < snowFlakeCount; i++) {
+            snowPositions[i * 3] = (Math.random() - 0.5) * 36;
+            snowPositions[i * 3 + 1] = Math.random() * 22;
+            snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 36;
+
+            snowVelocities[i * 3] = (Math.random() - 0.5) * 0.5;
+            snowVelocities[i * 3 + 1] = 1.4 + Math.random() * 2.2; // Falling downward speed
+            snowVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+        }
+
+        sGeo.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+        const sMat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.35,
+            map: snowTexture,
+            transparent: true,
+            opacity: 0.88,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        snowSystem = new THREE.Points(sGeo, sMat);
+        snowSystem.visible = (currentBiome === 'snow');
+        scene.add(snowSystem);
+    }
+
+    function animateSnowfall(delta) {
+        if (!snowSystem) return;
+        const isSnowBiome = (currentBiome === 'snow');
+        snowSystem.visible = isSnowBiome;
+        if (!isSnowBiome) return;
+
+        const positions = snowSystem.geometry.attributes.position.array;
+        const time = Date.now() * 0.0015;
+
+        for (let i = 0; i < snowFlakeCount; i++) {
+            // Gentle continuous downward drift
+            positions[i * 3 + 1] -= snowVelocities[i * 3 + 1] * delta;
+            // Natural horizontal wind flutter and sway
+            positions[i * 3] += (Math.sin(time + i * 0.1) * 0.5 + snowVelocities[i * 3]) * delta;
+            positions[i * 3 + 2] += (Math.cos(time + i * 0.15) * 0.4 + snowVelocities[i * 3 + 2]) * delta;
+
+            // Recycle snowflake to top of sky once it reaches the ground
+            if (positions[i * 3 + 1] < 0.1) {
+                positions[i * 3 + 1] = 20 + Math.random() * 3;
+                positions[i * 3] = (Math.random() - 0.5) * 36;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 36;
+            }
+        }
+        snowSystem.geometry.attributes.position.needsUpdate = true;
     }
 
     // ==========================================
@@ -1777,24 +1871,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 ewWall.castShadow = true;
                 shelterBody.add(ewWall);
 
-                // Architectural window frame on east/west side (Warm Bronze Champagne)
-                const winH = h * 0.45;
-                const winW = (w - colSize*2) * 0.4;
-                const winFrameGeo = new THREE.BoxGeometry(wallThick + 0.06, winH + 0.08, winW + 0.08);
-                const winFrame = new THREE.Mesh(winFrameGeo, mats.frameMat);
-                winFrame.position.set(xPos, floorY + h * 0.65, 0);
-                shelterBody.add(winFrame);
+                // High-Level Clerestory Window (Clear Glass + Slender Frame Trim)
+                const winH = h * 0.42;
+                const winW = (w - colSize*2) * 0.45;
+                const winCenterY = floorY + h * 0.68;
 
-                const winGlassGeo = new THREE.BoxGeometry(0.04, winH, winW);
-                const winGlass = new THREE.Mesh(winGlassGeo, mats.glassMat);
-                winGlass.position.set(xPos, floorY + h * 0.65, 0);
+                // Clear Glass Pane
+                const winGlass = new THREE.Mesh(new THREE.BoxGeometry(wallThick + 0.02, winH - 0.06, winW - 0.06), mats.glassMat);
+                winGlass.position.set(xPos, winCenterY, 0);
                 shelterBody.add(winGlass);
+
+                // Slender Architectural Perimeter Frame Trim (Thickness 0.04m, NOT solid block!)
+                const frameThick = 0.04;
+                const frameDepth = wallThick + 0.04;
+                // Top & Bottom rails
+                [-1, 1].forEach(tb => {
+                    const rail = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameThick, winW), mats.frameMat);
+                    rail.position.set(xPos, winCenterY + tb * (winH/2 - frameThick/2), 0);
+                    shelterBody.add(rail);
+                });
+                // Left & Right jambs
+                [-1, 1].forEach(lr => {
+                    const jamb = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, winH, frameThick), mats.frameMat);
+                    jamb.position.set(xPos, winCenterY, lr * (winW/2 - frameThick/2));
+                    shelterBody.add(jamb);
+                });
 
                 // Horizontal Solar Louver above the window (Warm Golden Teak Slat)
                 const louverGeo = new THREE.BoxGeometry(0.45, 0.04, winW + 0.2);
                 const louverMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.65 });
                 const louver = new THREE.Mesh(louverGeo, louverMat);
-                louver.position.set(xPos + side * 0.22, floorY + h * 0.65 + winH/2 + 0.1, 0);
+                louver.position.set(xPos + side * 0.22, winCenterY + winH/2 + 0.1, 0);
                 louver.rotation.z = side * 0.3;
                 shelterBody.add(louver);
             });
@@ -1975,36 +2082,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // C. Flanking Residential Windows on Left & Right of Door
                 const sideSpanW = (l - colSize*2 - doorW - 0.4) / 2;
-                if (sideSpanW > 0.8) {
+                if (sideSpanW > 0.5) {
+                    const sillH = 0.55; // 0.55m residential window sill height
+                    const winH = Math.max(0.8, h - sillH - 0.35); // Window height
+                    const winCenterY = floorY + sillH + winH/2;
+                    const lintelH = h - (sillH + winH);
+
                     [-1, 1].forEach(side => {
                         const winCenterX = side * (doorW/2 + 0.2 + sideSpanW/2);
-                        const winH = h * 0.7;
 
-                        // Window Frame (Warm Bronze Champagne)
-                        const frameGeo = new THREE.BoxGeometry(sideSpanW, winH, wallThick + 0.04);
-                        const frame = new THREE.Mesh(frameGeo, mats.frameMat);
-                        frame.position.set(winCenterX, floorY + h/2, southZ);
-                        shelterBody.add(frame);
+                        // 1. Lower Wall Sill Spandrel (Genuine Wall Material below window)
+                        const sillWall = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW, sillH, wallThick), mats.wallMat);
+                        sillWall.position.set(winCenterX, floorY + sillH/2, southZ);
+                        sillWall.castShadow = true;
+                        sillWall.receiveShadow = true;
+                        shelterBody.add(sillWall);
 
-                        // Window Glass Pane
-                        const glass = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW - 0.12, winH - 0.12, 0.04), mats.glassMat);
-                        glass.position.set(winCenterX, floorY + h/2, southZ);
+                        // 2. Upper Wall Lintel Spandrel (Genuine Wall Material above window)
+                        if (lintelH > 0.05) {
+                            const lintelWall = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW, lintelH, wallThick), mats.wallMat);
+                            lintelWall.position.set(winCenterX, floorY + h - lintelH/2, southZ);
+                            lintelWall.castShadow = true;
+                            shelterBody.add(lintelWall);
+                        }
+
+                        // 3. Wall Pier between window and door
+                        const postW = 0.2;
+                        const postWall = new THREE.Mesh(new THREE.BoxGeometry(postW, h, wallThick), mats.wallMat);
+                        postWall.position.set(side * (doorW/2 + postW/2), floorY + h/2, southZ);
+                        postWall.castShadow = true;
+                        shelterBody.add(postWall);
+
+                        // 4. TRANSPARENT Window Glass Pane (NO SOLID BLOCK! 100% Clear & Visible!)
+                        const glass = new THREE.Mesh(
+                            new THREE.BoxGeometry(sideSpanW - 0.08, winH - 0.08, 0.04),
+                            mats.glassMat
+                        );
+                        glass.position.set(winCenterX, winCenterY, southZ);
                         shelterBody.add(glass);
 
-                        // Window Mullions (1 horizontal + 1 vertical divider in bronze champagne)
-                        const hMullion = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW - 0.12, 0.04, 0.06), mats.frameMat);
-                        hMullion.position.set(winCenterX, floorY + h/2, southZ);
-                        shelterBody.add(hMullion);
+                        // 5. Slender Perimeter Architectural Frame (Thickness 0.05m only around the border!)
+                        const fThick = 0.05;
+                        const fDepth = wallThick + 0.02;
 
-                        const vMullion = new THREE.Mesh(new THREE.BoxGeometry(0.04, winH - 0.12, 0.06), mats.frameMat);
-                        vMullion.position.set(winCenterX, floorY + h/2, southZ);
+                        // Top Frame Rail
+                        const topRail = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW, fThick, fDepth), mats.frameMat);
+                        topRail.position.set(winCenterX, winCenterY + winH/2 - fThick/2, southZ);
+                        shelterBody.add(topRail);
+
+                        // Bottom Frame Sill (Projecting window sill)
+                        const botRail = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW + 0.06, fThick, fDepth + 0.06), mats.frameMat);
+                        botRail.position.set(winCenterX, winCenterY - winH/2 + fThick/2, southZ + 0.02);
+                        shelterBody.add(botRail);
+
+                        // Left & Right Jambs
+                        [-1, 1].forEach(lr => {
+                            const jamb = new THREE.Mesh(new THREE.BoxGeometry(fThick, winH - fThick*2, fDepth), mats.frameMat);
+                            jamb.position.set(winCenterX + lr * (sideSpanW/2 - fThick/2), winCenterY, southZ);
+                            shelterBody.add(jamb);
+                        });
+
+                        // Center Mullion (Slender 0.04m divider into 2 glass casements)
+                        const vMullion = new THREE.Mesh(new THREE.BoxGeometry(0.04, winH - fThick*2, fDepth), mats.frameMat);
+                        vMullion.position.set(winCenterX, winCenterY, southZ);
                         shelterBody.add(vMullion);
 
-                        // Architectural Solar Louver Shading Screen (Warm Cedar Wood Slats)
+                        // 6. Architectural Passive Solar Shading Louver Eyebrow (Warm Cedar Wood Slats)
                         const louverMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.65 });
                         for (let s = 0; s < 3; s++) {
                             const slat = new THREE.Mesh(new THREE.BoxGeometry(sideSpanW + 0.1, 0.03, 0.35), louverMat);
-                            slat.position.set(winCenterX, floorY + h/2 + winH/2 + 0.12 + s * 0.14, southZ + 0.25);
+                            slat.position.set(winCenterX, winCenterY + winH/2 + 0.12 + s * 0.12, southZ + 0.22);
                             slat.rotation.x = -0.35;
                             slat.castShadow = true;
                             shelterBody.add(slat);
@@ -2013,22 +2160,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Upper Floor: Panoramic Architectural Ribbon Window
-                const winH = h * 0.75;
+                const sillH = 0.8;
+                const winH = Math.max(0.9, h - sillH - 0.3);
                 const winW = l - colSize*2 - 0.4;
-                const frame = new THREE.Mesh(new THREE.BoxGeometry(winW, winH, wallThick + 0.04), mats.frameMat);
-                frame.position.set(0, floorY + h/2, southZ);
-                shelterBody.add(frame);
+                const winCenterY = floorY + sillH + winH/2;
 
-                const glass = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.12, winH - 0.12, 0.04), mats.glassMat);
-                glass.position.set(0, floorY + h/2, southZ);
+                // Spandrel Wall below ribbon window
+                const sillWall = new THREE.Mesh(new THREE.BoxGeometry(l - colSize*2, sillH, wallThick), mats.wallMat);
+                sillWall.position.set(0, floorY + sillH/2, southZ);
+                sillWall.castShadow = true;
+                shelterBody.add(sillWall);
+
+                // Lintel Wall above ribbon window
+                const lintelH = h - (sillH + winH);
+                if (lintelH > 0.05) {
+                    const lintelWall = new THREE.Mesh(new THREE.BoxGeometry(l - colSize*2, lintelH, wallThick), mats.wallMat);
+                    lintelWall.position.set(0, floorY + h - lintelH/2, southZ);
+                    lintelWall.castShadow = true;
+                    shelterBody.add(lintelWall);
+                }
+
+                // Transparent Glass Ribbon
+                const glass = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.08, winH - 0.08, 0.04), mats.glassMat);
+                glass.position.set(0, winCenterY, southZ);
                 shelterBody.add(glass);
+
+                // Slender Top and Bottom Frame Rails
+                const fThick = 0.05;
+                const fDepth = wallThick + 0.02;
+                [-1, 1].forEach(tb => {
+                    const rail = new THREE.Mesh(new THREE.BoxGeometry(winW, fThick, fDepth), mats.frameMat);
+                    rail.position.set(0, winCenterY + tb * (winH/2 - fThick/2), southZ);
+                    shelterBody.add(rail);
+                });
 
                 // Multiple vertical mullions
                 const mullionCount = 3;
                 for (let m = 1; m <= mullionCount; m++) {
                     const mX = -winW/2 + (m * winW) / (mullionCount + 1);
-                    const vMullion = new THREE.Mesh(new THREE.BoxGeometry(0.05, winH - 0.12, 0.06), mats.frameMat);
-                    vMullion.position.set(mX, floorY + h/2, southZ);
+                    const vMullion = new THREE.Mesh(new THREE.BoxGeometry(0.04, winH - fThick*2, fDepth), mats.frameMat);
+                    vMullion.position.set(mX, winCenterY, southZ);
                     shelterBody.add(vMullion);
                 }
             }
