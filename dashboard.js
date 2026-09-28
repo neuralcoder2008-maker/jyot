@@ -1555,50 +1555,168 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 2. ENTRANCE STEPS, PORCH & PATHWAY (Warm Travertine & Sandstone)
-        const stepWidth = 2.4;
+        // 2. ARCHITECTURAL FRONT TIMBER VERANDA DECK, OUTDOOR LOUNGE & ENTRY SEQUENCE
+        const deckW = Math.max(5.0, l * 0.88);
+        const deckD = 2.4;
+        const deckY = foundationLift + plinthH;
+        const deckOverhangZ = w/2 + plinthOverhang;
+
+        // A. Timber Deck Planking (Warm Cedar / Honey Teak with distinct plank boards)
+        const deckPlankMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.55 }); // Warm Cedar Planking
+        const deckFasciaMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });  // Dark Teak Edge
+        const numPlanks = 10;
+        const plankD = (deckD - 0.08) / numPlanks;
+        for (let pk = 0; pk < numPlanks; pk++) {
+            const plankMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(deckW - 0.04, 0.06, plankD - 0.02),
+                deckPlankMat
+            );
+            plankMesh.position.set(0, deckY + 0.03, deckOverhangZ + pk * plankD + plankD/2);
+            plankMesh.receiveShadow = true;
+            shelterBody.add(plankMesh);
+        }
+
+        // Front and side fascia edge trim for the deck
+        const frontFascia = new THREE.Mesh(new THREE.BoxGeometry(deckW, 0.14, 0.06), deckFasciaMat);
+        frontFascia.position.set(0, deckY - 0.01, deckOverhangZ + deckD);
+        shelterBody.add(frontFascia);
+        [-deckW/2, deckW/2].forEach(sx => {
+            const sideFascia = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, deckD), deckFasciaMat);
+            sideFascia.position.set(sx, deckY - 0.01, deckOverhangZ + deckD/2);
+            shelterBody.add(sideFascia);
+        });
+
+        // B. Veranda Side Safety Balustrade (Minimalist Architectural Posts + Translucent Panels)
+        const railPostMat = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.6 });
+        const railGlassMat = new THREE.MeshPhysicalMaterial({ color: 0xe0f2fe, transmission: 0.85, opacity: 0.5, transparent: true, roughness: 0.1 });
+        [-deckW/2 + 0.04, deckW/2 - 0.04].forEach(rx => {
+            // Posts
+            for (let pt = 0; pt <= 2; pt++) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.06), railPostMat);
+                post.position.set(rx, deckY + 0.425, deckOverhangZ + pt * (deckD / 2));
+                post.castShadow = true;
+                shelterBody.add(post);
+            }
+            // Glass infill pane
+            const glassPane = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.72, deckD - 0.12), railGlassMat);
+            glassPane.position.set(rx, deckY + 0.42, deckOverhangZ + deckD / 2);
+            shelterBody.add(glassPane);
+            // Top handrail
+            const handrail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, deckD + 0.04), railPostMat);
+            handrail.position.set(rx, deckY + 0.86, deckOverhangZ + deckD / 2);
+            shelterBody.add(handrail);
+        });
+
+        // C. Outdoor Veranda Relaxation Lounge (Indoor-Outdoor Living)
+        const loungeGroup = new THREE.Group();
+        const benchSeatMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 });
+        const cushionMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.85 }); // Cobalt Teal Outdoor Fabric
+        const benchBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.65), benchSeatMat);
+        benchBase.position.y = 0.11;
+        loungeGroup.add(benchBase);
+        const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.08, 0.62), cushionMat);
+        cushion.position.y = 0.26;
+        loungeGroup.add(cushion);
+        const benchBack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.45, 0.08), benchSeatMat);
+        benchBack.position.set(0, 0.45, -0.28);
+        loungeGroup.add(benchBack);
+        // Throw pillow
+        const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.12), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+        pillow.position.set(0.3, 0.38, -0.2);
+        pillow.rotation.y = -0.2;
+        loungeGroup.add(pillow);
+
+        // Low round outdoor drink table
+        const sideTable = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.32, 16), new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.5 }));
+        sideTable.position.set(0.85, 0.16, 0.1);
+        loungeGroup.add(sideTable);
+        // Ceramic coffee cup on table
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        cup.position.set(0.85, 0.36, 0.1);
+        loungeGroup.add(cup);
+
+        loungeGroup.position.set(deckW * 0.28, deckY + 0.06, deckOverhangZ + 1.2);
+        shelterBody.add(loungeGroup);
+
+        // D. Natural Coir Welcome Entry Mat
+        const matMat = new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.95 }); // Natural Coir
+        const borderMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.9 });
+        const matMesh = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.015, 0.6), matMat);
+        matMesh.position.set(0, deckY + 0.07, deckOverhangZ + 0.45);
+        matMesh.receiveShadow = true;
+        shelterBody.add(matMesh);
+        const matBorder = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.012, 0.64), borderMat);
+        matBorder.position.set(0, deckY + 0.065, deckOverhangZ + 0.45);
+        shelterBody.add(matBorder);
+
+        // E. Front Garden Steps Leading Down to Path (Warm Travertine Stone)
+        const stepWidth = 3.2;
         const stepMat = new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.85 }); // Warm Travertine Stone
-        for (let s = 0; s < 3; s++) {
-            const stepGeo = new THREE.BoxGeometry(stepWidth - s * 0.2, 0.12, 0.4);
+        for (let s = 0; s < 2; s++) {
+            const stepGeo = new THREE.BoxGeometry(stepWidth - s * 0.3, 0.14, 0.45);
             const step = new THREE.Mesh(stepGeo, stepMat);
-            step.position.set(0, (0.36 - s * 0.12) / 2 + foundationLift * (s === 0 ? 1 : 0), (w/2 + plinthOverhang) + (s * 0.38) + 0.2);
+            step.position.set(0, deckY - 0.07 - s * 0.14, deckOverhangZ + deckD + s * 0.42 + 0.22);
             step.castShadow = true;
             step.receiveShadow = true;
             shelterBody.add(step);
         }
 
-        // Flagstone Stepping Stones leading into the landscape (Warm Sandstone)
+        // F. Flagstone Stepping Stones leading into the landscape (Warm Sandstone)
         const paverMat = new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.9 });
         for (let p = 0; p < 5; p++) {
-            const paverGeo = new THREE.BoxGeometry(1.2 - (p % 2) * 0.2, 0.06, 0.6);
+            const paverGeo = new THREE.BoxGeometry(1.3 - (p % 2) * 0.2, 0.06, 0.65);
             const paver = new THREE.Mesh(paverGeo, paverMat);
-            paver.position.set((p % 2 === 0 ? 0.1 : -0.1), 0.03, w/2 + plinthOverhang + 1.8 + p * 0.85);
+            paver.position.set((p % 2 === 0 ? 0.12 : -0.12), 0.03, deckOverhangZ + deckD + 1.2 + p * 0.9);
             paver.receiveShadow = true;
             shelterBody.add(paver);
         }
 
-        // Terracotta Ceramic Planter Boxes with Lush Green Foliage & Colorful Blooming Flowers
+        // G. Modern Architectural Landscape Bollard Pathway Lights
+        const bollardBodyMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.4, metalness: 0.7 });
+        const bollardLedMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
+        [-0.95, 0.95].forEach(bx => {
+            [0, 2].forEach(bp => {
+                const bollardGroup = new THREE.Group();
+                const bollardCol = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 12), bollardBodyMat);
+                bollardCol.position.y = 0.225;
+                bollardGroup.add(bollardCol);
+                const bollardLed = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.06, 12), bollardLedMat);
+                bollardLed.position.y = 0.40;
+                bollardGroup.add(bollardLed);
+                const bollardCap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), bollardBodyMat);
+                bollardCap.position.y = 0.44;
+                bollardGroup.add(bollardCap);
+
+                const bLight = new THREE.PointLight(0xffedd5, 0.6, 2.5);
+                bLight.position.y = 0.42;
+                bollardGroup.add(bLight);
+
+                bollardGroup.position.set(bx, 0.0, deckOverhangZ + deckD + 1.2 + bp * 1.5);
+                shelterBody.add(bollardGroup);
+            });
+        });
+
+        // H. Terracotta Planter Beds with Lush Green Foliage & Colorful Flowers
         const planterMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.75 }); // Rich terracotta clay
         const plantFoliageMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.85 });
         const flowerColors = [0xe11d48, 0xfacc15, 0xa855f7, 0xf97316]; // Crimson, Yellow, Lavender, Orange
 
-        [-stepWidth/2 - 0.5, stepWidth/2 + 0.5].forEach(sideX => {
-            const planterBox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.8), planterMat);
-            planterBox.position.set(sideX, 0.275, w/2 + plinthOverhang + 0.4);
+        [-stepWidth/2 - 0.7, stepWidth/2 + 0.7].forEach(sideX => {
+            const planterBox = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 1.0), planterMat);
+            planterBox.position.set(sideX, 0.275, deckOverhangZ + deckD + 0.4);
             planterBox.castShadow = true;
             shelterBody.add(planterBox);
 
             // Emerald succulents + colorful flowers
-            for (let b = 0; b < 6; b++) {
-                const shrub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2), plantFoliageMat);
-                shrub.position.set(sideX + (Math.random()-0.5)*0.35, 0.65 + (Math.random()*0.15), w/2 + plinthOverhang + 0.4 + (Math.random()-0.5)*0.35);
+            for (let b = 0; b < 7; b++) {
+                const shrub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22), plantFoliageMat);
+                shrub.position.set(sideX + (Math.random()-0.5)*0.45, 0.65 + (Math.random()*0.15), deckOverhangZ + deckD + 0.4 + (Math.random()-0.5)*0.45);
                 shrub.castShadow = true;
                 shelterBody.add(shrub);
 
-                // Flower blossom on top
                 const flowerMat = new THREE.MeshStandardMaterial({ color: flowerColors[b % flowerColors.length], roughness: 0.5 });
-                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), flowerMat);
-                flower.position.set(shrub.position.x, shrub.position.y + 0.15, shrub.position.z);
+                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), flowerMat);
+                flower.position.set(shrub.position.x, shrub.position.y + 0.16, shrub.position.z);
                 shelterBody.add(flower);
             }
         });
@@ -1724,12 +1842,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 handle.position.set(doorW - 0.22, doorH/2, 0.11);
                 doorPivot.add(handle);
 
-                // Entrance Canopy (Warm Cedar Wood Slats)
+                // Entrance Canopy (Warm Cedar Wood Slats) with Extended Sun Shading Pergola Rafters
                 const canopyMat = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.6 });
                 const canopy = new THREE.Mesh(new THREE.BoxGeometry(doorW + 1.2, 0.12, 1.4), canopyMat);
                 canopy.position.set(0, doorH + 0.16, 0.7);
                 canopy.castShadow = true;
                 doorGroup.add(canopy);
+
+                // Extended Architectural Pergola Trellis Rafters over Veranda (Passive Solar Shading)
+                const rafterMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 });
+                const numRafters = 6;
+                const pergolaSpanX = doorW + 1.4;
+                for (let rf = 0; rf < numRafters; rf++) {
+                    const rX = -pergolaSpanX/2 + (rf * pergolaSpanX) / (numRafters - 1);
+                    const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 2.3), rafterMat);
+                    rafter.position.set(rX, doorH + 0.24, 1.15);
+                    rafter.castShadow = true;
+                    doorGroup.add(rafter);
+                }
 
                 // Brass brackets supporting canopy
                 [-doorW/2 - 0.4, doorW/2 + 0.4].forEach(bx => {
@@ -1743,6 +1873,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 const canopyLight = new THREE.PointLight(0xffedd5, 1.5, 6);
                 canopyLight.position.set(0, doorH + 0.05, 0.7);
                 doorGroup.add(canopyLight);
+
+                // Modern Architectural Up/Down Outdoor LED Wall Sconces flanking the door
+                const sconceMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.35, metalness: 0.8 });
+                const sconceLensMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
+                [-doorW/2 - 0.22, doorW/2 + 0.22].forEach(scX => {
+                    const sconceGroup = new THREE.Group();
+                    const sconceBody = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 16), sconceMat);
+                    sconceGroup.add(sconceBody);
+                    // Top & Bottom glowing acrylic lenses
+                    const lensTop = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.02, 16), sconceLensMat);
+                    lensTop.position.y = 0.11;
+                    sconceGroup.add(lensTop);
+                    const lensBot = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.02, 16), sconceLensMat);
+                    lensBot.position.y = -0.11;
+                    sconceGroup.add(lensBot);
+
+                    // Warm light wash on the facade
+                    const sconceLight = new THREE.PointLight(0xffedd5, 0.8, 3.5);
+                    sconceLight.position.set(0, 0, 0.08);
+                    sconceGroup.add(sconceLight);
+
+                    sconceGroup.position.set(scX, doorH * 0.65, 0.06);
+                    doorGroup.add(sconceGroup);
+                });
+
+                // Architectural House Address Plaque ("26" for SIH26051)
+                const plaqueMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.2 });
+                const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.02), plaqueMat);
+                plaque.position.set(doorW/2 + 0.38, doorH * 0.62, 0.03);
+                doorGroup.add(plaque);
+                // Number relief
+                const numMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.015), sconceMat);
+                numMesh.position.set(doorW/2 + 0.38, doorH * 0.62, 0.045);
+                doorGroup.add(numMesh);
+
+                // Vertical Cedar Slat Rainscreen Feature on Wall next to Door
+                const rainscreenMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.6 });
+                const rsW = 0.9;
+                const rsSlats = 8;
+                for (let rs = 0; rs < rsSlats; rs++) {
+                    const rsX = -doorW/2 - 0.28 - (rs * (rsW / rsSlats));
+                    const slatMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, doorH + 0.1, 0.03), rainscreenMat);
+                    slatMesh.position.set(rsX, (doorH + 0.1)/2, 0.025);
+                    slatMesh.castShadow = true;
+                    doorGroup.add(slatMesh);
+                }
 
                 shelterBody.add(doorGroup);
 
