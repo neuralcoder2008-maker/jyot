@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     let scene, camera, renderer, controls;
     let shelterRoot, shelterBody, shelterRoof, dimensionGroup, environmentGroup, particleSystem;
-    let sunMesh, sunLight, sunPathLine, groundMesh, compassGroup;
+    let sunMesh, sunLight, sunPathLine, groundMesh, compassGroup, turfMesh;
     let particlePositions, particleCount = 180;
     let skyUniforms;
     
@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         environmentGroup = new THREE.Group();
         scene.add(environmentGroup);
-        buildTreesAndSurroundings();
+        window.rebuildEnvironment('standard');
 
         // Animated Wind Particle System
         initWindParticles();
@@ -684,10 +684,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Architectural terrain podium
         const turfGeo = new THREE.CylinderGeometry(15, 15, 0.15, 48);
         const turfMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 }); // Sand/Dirt color
-        const turf = new THREE.Mesh(turfGeo, turfMat);
-        turf.position.y = 0.075;
-        turf.receiveShadow = true;
-        scene.add(turf);
+        turfMesh = new THREE.Mesh(turfGeo, turfMat);
+        turfMesh.position.y = 0.075;
+        turfMesh.receiveShadow = true;
+        scene.add(turfMesh);
 
         // Site Grid
         const grid = new THREE.GridHelper(30, 30, 0x94a3b8, 0xcfd8dc);
@@ -735,12 +735,65 @@ document.addEventListener('DOMContentLoaded', () => {
         makeMarker('W', new THREE.Vector3(-radius, 0.4, 0), '#475569');
     }
 
-    function buildTreesAndSurroundings() {
+    window.rebuildEnvironment = function(biome) {
         while (environmentGroup.children.length > 0) {
             environmentGroup.remove(environmentGroup.children[0]);
         }
 
-        // Trees removed for extreme climate realism
+        // Change ground colors
+        if (groundMesh && turfMesh) {
+            if (biome === 'desert') {
+                groundMesh.material.color.setHex(0xe8d5a7);
+                turfMesh.material.color.setHex(0xc2b280);
+            } else if (biome === 'snow') {
+                groundMesh.material.color.setHex(0xffffff);
+                turfMesh.material.color.setHex(0xf0f8ff);
+            } else if (biome === 'forest' || biome === 'tropical') {
+                groundMesh.material.color.setHex(0x556b2f);
+                turfMesh.material.color.setHex(0x228b22);
+            } else {
+                groundMesh.material.color.setHex(0xe2e8f0);
+                turfMesh.material.color.setHex(0xd2b48c);
+            }
+        }
+
+        // Add biome-specific elements
+        if (biome === 'desert') {
+            for(let i=0; i<5; i++) {
+                const cactusGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.5 + Math.random(), 8);
+                const cactusMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57 });
+                const cactus = new THREE.Mesh(cactusGeo, cactusMat);
+                cactus.position.set((Math.random()-0.5)*12, 1, (Math.random()-0.5)*12);
+                if(Math.abs(cactus.position.x) < 4 && Math.abs(cactus.position.z) < 4) continue;
+                environmentGroup.add(cactus);
+            }
+        } else if (biome === 'forest' || biome === 'tropical') {
+            for(let i=0; i<8; i++) {
+                const trunkGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 0.5;
+                tree.add(trunk);
+                const leavesGeo = new THREE.ConeGeometry(0.8, 2, 8);
+                const leavesMat = new THREE.MeshStandardMaterial({ color: 0x006400 });
+                const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+                leaves.position.y = 1.5;
+                tree.add(leaves);
+                tree.position.set((Math.random()-0.5)*12, 0, (Math.random()-0.5)*12);
+                if(Math.abs(tree.position.x) < 4 && Math.abs(tree.position.z) < 4) continue;
+                environmentGroup.add(tree);
+            }
+        } else if (biome === 'snow') {
+             for(let i=0; i<6; i++) {
+                const rockGeo = new THREE.DodecahedronGeometry(0.3 + Math.random()*0.3);
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                rock.position.set((Math.random()-0.5)*12, 0.2, (Math.random()-0.5)*12);
+                if(Math.abs(rock.position.x) < 4 && Math.abs(rock.position.z) < 4) continue;
+                environmentGroup.add(rock);
+            }
+        }
 
         // Architectural scale figure (Architect human silhouette)
         const personGroup = new THREE.Group();
@@ -1910,6 +1963,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add the actual AI rationale
                 addAiMessage(aiResult.rationale, false);
                 
+                if (aiResult.environment) {
+                    window.rebuildEnvironment(aiResult.environment);
+                }
+
                 updateGeometry();
                 showToast('AI Auto-Design Complete');
             } catch (err) {

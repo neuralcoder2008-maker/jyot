@@ -17,7 +17,7 @@ if api_key:
 
 # We use gemini-2.5-flash as the default model
 try:
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-3.1-pro')
 except:
     model = None
 
@@ -89,6 +89,7 @@ def generate():
     - wallMaterial (string, one of: "pcm_biowax", "aerated_concrete", "rammed_earth", "timber_frame", "brick_cavity", "galvanized_sheet")
     - roofType (string, one of: "green_roof", "cool_roof", "sloped_solar", "corrugated_iron")
     - glazingRatio (string, e.g., "15", "25", "40")
+    - environment (string, one of: "desert", "snow", "forest", "tropical", "standard")
     - rationale (string, explain how your design fulfills the user's prompt)
     """
 
