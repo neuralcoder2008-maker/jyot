@@ -15,11 +15,17 @@ api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
-# We use gemini-2.5-flash as the default model
-try:
-    model = genai.GenerativeModel('gemini-3.1-pro')
-except:
-    model = None
+# Try latest Gemini models in priority order
+model = None
+if api_key:
+    for model_name in ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-pro']:
+        try:
+            model = genai.GenerativeModel(model_name)
+            print(f"Using model: {model_name}")
+            break
+        except Exception as e:
+            print(f"Model {model_name} unavailable: {e}")
+            continue
 
 @app.route("/optimize", methods=["POST"])
 def optimize():

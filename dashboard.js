@@ -603,7 +603,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         environmentGroup = new THREE.Group();
         scene.add(environmentGroup);
-        window.rebuildEnvironment('standard');
 
         // Animated Wind Particle System
         initWindParticles();
@@ -1380,6 +1379,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initThree();
+    // Call this AFTER initThree so rebuildEnvironment is defined
+    if (window.rebuildEnvironment) window.rebuildEnvironment('standard');
 
     // ==========================================
     // 7. 3D Mode Switcher & Element Toggles
@@ -1624,6 +1625,19 @@ document.addEventListener('DOMContentLoaded', () => {
         customCoordRow.style.display = 'none';
         weatherSourceBadge.textContent = 'Demo Mode (Calibrated)';
         activePreset = climatePresets[val] || climatePresets.shimla;
+
+        // Auto-switch the 3D environment biome based on region
+        const biomemap = {
+            shimla: 'snow',
+            leh: 'snow',
+            jodhpur: 'desert',
+            nagpur: 'standard',
+            chennai: 'tropical',
+            nasa: 'standard'
+        };
+        if (window.rebuildEnvironment) {
+            window.rebuildEnvironment(biomemap[val] || 'standard');
+        }
 
         updateClimateUI(activePreset);
         recalculateThermalSimulation();
