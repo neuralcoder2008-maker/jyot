@@ -1747,7 +1747,8 @@ document.addEventListener('DOMContentLoaded', () => {
         applyOptCandidateBtn.innerHTML = '<span>⏳ Contacting AI Optimization Engine...</span>';
         
         try {
-            const response = await fetch('http://localhost:3000/optimize', {
+            const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') ? 'http://localhost:3000' : '';
+            const response = await fetch(`${API_BASE}/optimize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1927,7 +1928,8 @@ document.addEventListener('DOMContentLoaded', () => {
             addAiMessage("Thinking...", false);
             
             try {
-                const response = await fetch('http://localhost:3000/generate', {
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') ? 'http://localhost:3000' : '';
+                const response = await fetch(`${API_BASE}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: promptStr })

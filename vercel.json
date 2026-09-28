@@ -1,0 +1,18 @@
+{
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/optimize",
+      "dest": "app.py"
+    },
+    {
+      "src": "/generate",
+      "dest": "app.py"
+    }
+  ]
+}
