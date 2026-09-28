@@ -1536,17 +1536,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 wallMat: wallMat,
                 roofMat: roofMat,
-                glassMat: new THREE.MeshPhysicalMaterial({
-                    color: 0xbae6fd,
-                    transmission: 0.88,
-                    opacity: 0.95,
+                glassMat: new THREE.MeshStandardMaterial({
+                    color: 0x93c5fd,
                     transparent: true,
+                    opacity: 0.20,
                     roughness: 0.05,
-                    metalness: 0.12,
-                    ior: 1.52,
-                    thickness: 0.35,
-                    clearcoat: 1.0,
-                    clearcoatRoughness: 0.05
+                    metalness: 0.15
                 }),
                 slabMat: new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.85, metalness: 0.05 }),
                 doorMat: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.55 }),
@@ -1918,15 +1913,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 doorGroup.position.set(0, floorY, southZ);
                 doorGroup.userData.isDoor = true;
 
-                // Fixed Door Frame (Warm Champagne Bronze)
-                const doorFrameGeo = new THREE.BoxGeometry(doorW + 0.14, doorH + 0.08, wallThick + 0.06);
-                const doorFrame = new THREE.Mesh(doorFrameGeo, mats.frameMat);
-                doorFrame.position.set(0, doorH/2, 0);
-                doorGroup.add(doorFrame);
+                // Slender Hollow Door Perimeter Frame (Left jamb, Right jamb, Top header - hollow opening in center!)
+                const dfThick = 0.06;
+                const dfDepth = wallThick + 0.04;
+                // Left Jamb
+                const leftJamb = new THREE.Mesh(new THREE.BoxGeometry(dfThick, doorH, dfDepth), mats.frameMat);
+                leftJamb.position.set(-doorW/2 - dfThick/2, doorH/2, 0);
+                leftJamb.castShadow = true;
+                doorGroup.add(leftJamb);
+                // Right Jamb
+                const rightJamb = new THREE.Mesh(new THREE.BoxGeometry(dfThick, doorH, dfDepth), mats.frameMat);
+                rightJamb.position.set(doorW/2 + dfThick/2, doorH/2, 0);
+                rightJamb.castShadow = true;
+                doorGroup.add(rightJamb);
+                // Top Header Frame
+                const topJamb = new THREE.Mesh(new THREE.BoxGeometry(doorW + dfThick*2, dfThick, dfDepth), mats.frameMat);
+                topJamb.position.set(0, doorH + dfThick/2, 0);
+                topJamb.castShadow = true;
+                doorGroup.add(topJamb);
+                // Door Sill Threshold
+                const doorSill = new THREE.Mesh(new THREE.BoxGeometry(doorW + dfThick*2, 0.025, dfDepth + 0.04), mats.frameMat);
+                doorSill.position.set(0, 0.0125, 0.02);
+                doorGroup.add(doorSill);
+
+                // Wall Lintel Spandrel directly above the door up to ceiling h
+                const doorLintelH = h - (doorH + dfThick);
+                if (doorLintelH > 0.02) {
+                    const doorLintel = new THREE.Mesh(new THREE.BoxGeometry(doorW + dfThick*2, doorLintelH, wallThick), mats.wallMat);
+                    doorLintel.position.set(0, doorH + dfThick + doorLintelH/2, 0);
+                    doorLintel.castShadow = true;
+                    doorGroup.add(doorLintel);
+                }
 
                 // Door Hinge Pivot positioned at left jamb
                 doorPivot = new THREE.Group();
-                doorPivot.position.set(-doorW/2 + 0.06, 0, 0);
+                doorPivot.position.set(-doorW/2 + 0.02, 0, 0);
                 doorGroup.add(doorPivot);
 
                 // Door Leaf (Warm Vibrant Terracotta Honey Teak with vertical depth)
@@ -1984,7 +2005,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Modern Architectural Up/Down Outdoor LED Wall Sconces flanking the door
                 const sconceMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.35, metalness: 0.8 });
                 const sconceLensMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
-                [-doorW/2 - 0.22, doorW/2 + 0.22].forEach(scX => {
+                [-doorW/2 - 0.18, doorW/2 + 0.18].forEach(scX => {
                     const sconceGroup = new THREE.Group();
                     const sconceBody = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 16), sconceMat);
                     sconceGroup.add(sconceBody);
@@ -2008,38 +2029,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Architectural House Address Plaque ("26" for SIH26051)
                 const plaqueMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.2 });
                 const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.02), plaqueMat);
-                plaque.position.set(doorW/2 + 0.38, doorH * 0.62, 0.03);
+                plaque.position.set(doorW/2 + 0.32, doorH * 0.62, 0.03);
                 doorGroup.add(plaque);
                 // Number relief
                 const numMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.015), sconceMat);
-                numMesh.position.set(doorW/2 + 0.38, doorH * 0.62, 0.045);
+                numMesh.position.set(doorW/2 + 0.32, doorH * 0.62, 0.045);
                 doorGroup.add(numMesh);
-
-                // Vertical Cedar Slat Rainscreen Feature on Wall next to Door
-                const rainscreenMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.6 });
-                const rsW = 0.9;
-                const rsSlats = 8;
-                for (let rs = 0; rs < rsSlats; rs++) {
-                    const rsX = -doorW/2 - 0.28 - (rs * (rsW / rsSlats));
-                    const slatMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, doorH + 0.1, 0.03), rainscreenMat);
-                    slatMesh.position.set(rsX, (doorH + 0.1)/2, 0.025);
-                    slatMesh.castShadow = true;
-                    doorGroup.add(slatMesh);
-                }
 
                 shelterBody.add(doorGroup);
 
-                // B. Interior Living Room Furnishings (Revealed when door swings open!)
-                // Colorful Geometric Area Rug
-                const rugGeo = new THREE.PlaneGeometry(Math.min(3.2, l * 0.45), Math.min(2.0, w * 0.45));
-                const rugMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.95 }); // Ocean teal
+                // =========================================================================
+                // B. FULLY FURNISHED & ILLUMINATED INTERIOR (Clearly visible from outside!)
+                // =========================================================================
+                const interiorGroup = new THREE.Group();
+
+                // 1. Large Textured Area Rug (Deep Ocean Teal with cream geometric border)
+                const rugGeo = new THREE.PlaneGeometry(Math.min(3.6, l * 0.5), Math.min(2.4, w * 0.5));
+                const rugMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.95 });
                 const rug = new THREE.Mesh(rugGeo, rugMat);
                 rug.rotation.x = -Math.PI / 2;
-                rug.position.set(0, floorY + 0.035, 0.3);
+                rug.position.set(-0.2, floorY + 0.035, 0.1);
                 rug.receiveShadow = true;
-                shelterBody.add(rug);
+                interiorGroup.add(rug);
 
-                // Modern Armchair in Vibrant Mustard Yellow
+                // 2. Designer Modern 3-Seater Sofa (Cobalt Blue with throw pillows)
+                const sofaGroup = new THREE.Group();
+                const sofaMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.8 }); // Navy Cobalt
+                const sofaWoodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 });
+                // Base
+                const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 0.85), sofaWoodMat);
+                sofaBase.position.y = 0.11;
+                sofaGroup.add(sofaBase);
+                // Cushions
+                const sofaCushion = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.18, 0.8), sofaMat);
+                sofaCushion.position.y = 0.31;
+                sofaGroup.add(sofaCushion);
+                // Backrest
+                const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.55, 0.22), sofaMat);
+                sofaBack.position.set(0, 0.58, -0.32);
+                sofaGroup.add(sofaBack);
+                // Armrests
+                [-0.95, 0.95].forEach(ax => {
+                    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.38, 0.85), sofaMat);
+                    arm.position.set(ax, 0.42, 0);
+                    sofaGroup.add(arm);
+                });
+                // Colorful Accent Throw Pillows (Tangerine orange & Emerald green)
+                const pillowMat1 = new THREE.MeshStandardMaterial({ color: 0xf97316 });
+                const pillowMat2 = new THREE.MeshStandardMaterial({ color: 0x10b981 });
+                const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.12), pillowMat1);
+                p1.position.set(-0.65, 0.48, -0.2);
+                p1.rotation.y = 0.2;
+                sofaGroup.add(p1);
+                const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.12), pillowMat2);
+                p2.position.set(0.65, 0.48, -0.2);
+                p2.rotation.y = -0.25;
+                sofaGroup.add(p2);
+
+                sofaGroup.position.set(-0.7, floorY, -0.3);
+                sofaGroup.rotation.y = 0.15;
+                interiorGroup.add(sofaGroup);
+
+                // 3. Modern Armchair in Vibrant Mustard Yellow
                 const chairGroup = new THREE.Group();
                 const chairSeatMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.8 }); // Mustard yellow
                 const seat = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.8), chairSeatMat);
@@ -2054,31 +2105,120 @@ document.addEventListener('DOMContentLoaded', () => {
                     leg.position.set(lp[0], 0.15, lp[1]);
                     chairGroup.add(leg);
                 });
-                chairGroup.position.set(Math.min(1.2, l * 0.22), floorY, 0.3);
-                chairGroup.rotation.y = -Math.PI * 0.28;
-                shelterBody.add(chairGroup);
+                chairGroup.position.set(Math.min(1.4, l * 0.25), floorY, 0.3);
+                chairGroup.rotation.y = -Math.PI * 0.32;
+                interiorGroup.add(chairGroup);
 
-                // Warm Oak Coffee Table with Ceramic Succulent Vase
+                // 4. Natural Oak Coffee Table with Ceramic Succulent & Books
                 const tableGroup = new THREE.Group();
-                const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 24), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.5 }));
+                const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.04, 24), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.45 }));
                 tableTop.position.y = 0.36;
                 tableGroup.add(tableTop);
-                const tablePed = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 0.34), new THREE.MeshStandardMaterial({ color: 0x9a3412 }));
+                const tablePed = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 0.34), new THREE.MeshStandardMaterial({ color: 0x9a3412 }));
                 tablePed.position.y = 0.17;
                 tableGroup.add(tablePed);
-                const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-                vase.position.y = 0.42;
+                const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.11, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                vase.position.y = 0.43;
                 tableGroup.add(vase);
-                const miniPlant = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06), new THREE.MeshStandardMaterial({ color: 0x15803d }));
-                miniPlant.position.y = 0.48;
+                const miniPlant = new THREE.Mesh(new THREE.DodecahedronGeometry(0.07), new THREE.MeshStandardMaterial({ color: 0x15803d }));
+                miniPlant.position.y = 0.50;
                 tableGroup.add(miniPlant);
-                tableGroup.position.set(-0.25, floorY, 0.3);
-                shelterBody.add(tableGroup);
+                // Art Magazine / Book on coffee table
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.02, 0.16), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+                mag.position.set(-0.14, 0.39, 0.1);
+                mag.rotation.y = 0.4;
+                tableGroup.add(mag);
 
-                // Sunset Orange Framed Canvas Art on back accent wall
-                const artFrame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.85, 0.04), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 }));
-                artFrame.position.set(0, floorY + 1.8, -w/2 + wallThick + 0.03);
-                shelterBody.add(artFrame);
+                tableGroup.position.set(-0.1, floorY, 0.35);
+                interiorGroup.add(tableGroup);
+
+                // 5. Contemporary Floor Arc Reading Lamp with Warm Glowing Bulb
+                const lampGroup = new THREE.Group();
+                const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.8 }));
+                lampGroup.add(lampBase);
+                const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.2 }));
+                lampPole.position.y = 0.9;
+                lampGroup.add(lampPole);
+                const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.22, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0xffedd5, side: THREE.DoubleSide }));
+                lampShade.position.set(0.12, 1.85, 0.12);
+                lampShade.rotation.x = 0.3;
+                lampGroup.add(lampShade);
+                const lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                lampBulb.position.set(0.12, 1.82, 0.12);
+                lampGroup.add(lampBulb);
+                const lampLight = new THREE.PointLight(0xffedd5, 1.4, 4.5);
+                lampLight.position.set(0.12, 1.8, 0.12);
+                lampGroup.add(lampLight);
+
+                lampGroup.position.set(-l/2 + 0.65, floorY, -0.4);
+                interiorGroup.add(lampGroup);
+
+                // 6. Wall-Mounted Bookshelf / Credenza on the back wall
+                const credenzaGroup = new THREE.Group();
+                const credenzaMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.6 });
+                const credW = Math.min(2.8, l * 0.45);
+                const cred = new THREE.Mesh(new THREE.BoxGeometry(credW, 0.55, 0.38), credenzaMat);
+                cred.position.y = 0.275;
+                credenzaGroup.add(cred);
+                // Floating books & decorative pottery on credenza
+                const bookColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6];
+                for (let bk = 0; bk < 5; bk++) {
+                    const book = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.18), new THREE.MeshStandardMaterial({ color: bookColors[bk] }));
+                    book.position.set(-credW/2 + 0.3 + bk * 0.07, 0.67, 0.02);
+                    credenzaGroup.add(book);
+                }
+                const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.24, 16), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 }));
+                pot.position.set(credW/2 - 0.4, 0.67, 0);
+                credenzaGroup.add(pot);
+
+                credenzaGroup.position.set(0.5, floorY, -w/2 + wallThick + 0.2);
+                interiorGroup.add(credenzaGroup);
+
+                // 7. Large Modern Artwork Canvas on back thermal wall
+                const artFrame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.1, 0.04), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 }));
+                artFrame.position.set(0.5, floorY + 1.85, -w/2 + wallThick + 0.03);
+                interiorGroup.add(artFrame);
+
+                // 8. Indoor Potted Fiddle-Leaf Fig Plant in white ceramic planter
+                const plantGroup = new THREE.Group();
+                const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.45, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }));
+                potMesh.position.y = 0.225;
+                plantGroup.add(potMesh);
+                for (let lf = 0; lf < 6; lf++) {
+                    const leaf = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 }));
+                    leaf.position.set((Math.random()-0.5)*0.2, 0.45 + lf * 0.14, (Math.random()-0.5)*0.2);
+                    leaf.scale.set(1.2, 0.5, 1.2);
+                    plantGroup.add(leaf);
+                }
+                plantGroup.position.set(Math.min(2.1, l/2 - 0.7), floorY, -w/2 + wallThick + 0.35);
+                interiorGroup.add(plantGroup);
+
+                // 9. Modern Hanging Ceiling Pendant Lamp above living room
+                const pendantGroup = new THREE.Group();
+                const pCord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.8), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+                pCord.position.y = 0.4;
+                pendantGroup.add(pCord);
+                const pDome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 24, 16, 0, Math.PI * 2, 0, Math.PI/2), new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.4, side: THREE.DoubleSide }));
+                pDome.rotation.x = Math.PI;
+                pendantGroup.add(pDome);
+                const pGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshBasicMaterial({ color: 0xffedd5 }));
+                pGlow.position.y = -0.05;
+                pendantGroup.add(pGlow);
+                // Warm, high-intensity interior light shining down
+                const pendantLight = new THREE.PointLight(0xfff7ed, 3.2, 12);
+                pendantLight.position.set(0, -0.15, 0);
+                pendantLight.castShadow = true;
+                pendantGroup.add(pendantLight);
+
+                pendantGroup.position.set(-0.2, floorY + h - 0.2, 0.1);
+                interiorGroup.add(pendantGroup);
+
+                // 10. Secondary Warm Ambient Interior Fill Light (Bright & inviting view through windows & door)
+                const interiorFillLight = new THREE.PointLight(0xffedd5, 2.2, 14);
+                interiorFillLight.position.set(0.6, floorY + h * 0.7, -w * 0.2);
+                interiorGroup.add(interiorFillLight);
+
+                shelterBody.add(interiorGroup);
 
                 // C. Flanking Residential Windows on Left & Right of Door
                 const sideSpanW = (l - colSize*2 - doorW - 0.4) / 2;
