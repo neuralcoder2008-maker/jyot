@@ -1,18 +1,12 @@
 {
-  "builds": [
+  "rewrites": [
     {
-      "src": "app.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/optimize",
-      "dest": "app.py"
+      "source": "/optimize",
+      "destination": "/api/index"
     },
     {
-      "src": "/generate",
-      "dest": "app.py"
+      "source": "/generate",
+      "destination": "/api/index"
     }
   ]
 }
