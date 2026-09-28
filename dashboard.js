@@ -1870,88 +1870,53 @@ document.addEventListener('DOMContentLoaded', () => {
             aiMessages.scrollTop = aiMessages.scrollHeight;
         }
 
-        function triggerAiGeneration(promptStr) {
-            const p = promptStr.toLowerCase();
-            let changed = false;
+        async function triggerAiGeneration(promptStr) {
+            addAiMessage("Thinking...", false);
+            
+            try {
+                const response = await fetch('http://localhost:3000/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptStr })
+                });
 
-            // 1. Extract Floor Count
-            let matchFloors = p.match(/(?:([0-9]+)|(one|two|three|four|five|six|seven|eight|nine|ten))\s*floor/);
-            let floors = null;
-            if (matchFloors) {
-                if (matchFloors[1]) floors = parseInt(matchFloors[1]);
-                else {
-                    const words = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6 };
-                    floors = words[matchFloors[2]];
-                }
-            }
+                if (!response.ok) throw new Error('API failed');
 
-            // 2. City / Climate Recognition
-            const isDesert = p.includes('desert') || p.match(/rajasthan|jaipur|jodhpur|thar|kutch|hot|dry/);
-            const isCoastal = p.match(/surat|mumbai|chennai|kochi|kerala|goa|flood|water|tropic|coast|rain|humid/);
-            const isAlpine = p.match(/snow|mountain|cold|alpine|hill|kashmir|himalaya|shimla|ladakh/);
-            const isCity = p.match(/delhi|bangalore|pune|hyderabad|ahmedabad|tall|big|mansion|city|urban/);
+                const aiResult = await response.json();
+                if (aiResult.error) throw new Error(aiResult.error);
 
-            if (isDesert) {
-                archStyle.value = 'courtyard';
-                paramFloors.value = floors || 1; valFloors.value = floors || 1;
-                paramLength.value = 12; valLength.value = 12;
-                paramWidth.value = 10; valWidth.value = 10;
-                wallMaterial.value = 'rammed_earth';
-                roofType.value = 'cool_roof';
-                glazingRatio.value = '15';
-                changed = true;
-            } else if (isAlpine) {
-                archStyle.value = 'a_frame';
-                paramFloors.value = floors || 2; valFloors.value = floors || 2;
-                paramLength.value = 8; valLength.value = 8;
-                paramWidth.value = 6; valWidth.value = 6;
-                wallMaterial.value = 'timber_frame';
-                roofType.value = 'sloped_solar';
-                glazingRatio.value = '25';
-                changed = true;
-            } else if (isCoastal) {
-                archStyle.value = 'stilted';
-                paramFloors.value = floors || 2; valFloors.value = floors || 2;
-                paramLength.value = 10; valLength.value = 10;
-                paramWidth.value = 6; valWidth.value = 6;
-                wallMaterial.value = 'pcm_biowax'; // High tech humidity control
-                roofType.value = 'green_roof';
-                glazingRatio.value = '40';
-                changed = true;
-            } else if (isCity || floors > 2) {
-                archStyle.value = 'modern_box';
-                paramFloors.value = floors || 3; valFloors.value = floors || 3;
-                paramLength.value = 12; valLength.value = 12;
-                paramWidth.value = 8; valWidth.value = 8;
-                wallMaterial.value = 'aerated_concrete';
-                roofType.value = 'sloped_solar';
-                glazingRatio.value = '40';
-                changed = true;
-            } else if (floors) {
-                archStyle.value = 'modern_box';
-                paramFloors.value = floors; valFloors.value = floors;
-                changed = true;
-            } else if (p.length > 2) {
-                // Generic fallback for any other word (e.g. random district)
-                archStyle.value = 'modern_box';
-                paramFloors.value = 2; valFloors.value = 2;
-                wallMaterial.value = 'brick_cavity';
-                roofType.value = 'green_roof';
-                changed = true;
-            }
+                // Apply parameters
+                archStyle.value = aiResult.style;
+                
+                paramFloors.value = aiResult.floors;
+                valFloors.value = aiResult.floors;
+                
+                paramLength.value = aiResult.length;
+                valLength.value = aiResult.length;
+                
+                paramWidth.value = aiResult.width;
+                valWidth.value = aiResult.width;
+                
+                paramHeight.value = aiResult.height;
+                valHeight.value = aiResult.height;
+                
+                wallMaterial.value = aiResult.wallMaterial;
+                roofType.value = aiResult.roofType;
+                glazingRatio.value = aiResult.glazingRatio;
 
-            if (changed) {
-                setTimeout(() => {
-                    let matExpl = "";
-                    if (archStyle.value === 'courtyard') matExpl = "For this Hot/Arid climate, I selected vivid Terracotta Rammed Earth for high thermal mass, and a bright White Cool Roof to reflect intense solar radiation.";
-                    else if (archStyle.value === 'a_frame') matExpl = "For this Cold Alpine climate, I selected rich Dark Timber Frame walls for insulation, and a Deep Blue Sloped Solar Roof to capture winter sun angles.";
-                    else if (archStyle.value === 'stilted') matExpl = "For this Humid/Coastal climate (like Surat), I selected high-tech blue Bio-Wax walls to absorb humidity/heat, elevated stilts for flooding, and a vibrant Green Roof.";
-                    else matExpl = "For this urban environment, I selected Red Brick or Aerated Concrete for balanced thermal resistance, with large greenhouse windows for daylighting.";
-
-                    addAiMessage("I have analyzed your request for '" + p.split(' ')[0] + "...'. I designed a beautiful " + (paramFloors.value) + "-story " + archStyle.options[archStyle.selectedIndex].text + ".\n\n" + matExpl + "\n\nGenerating your colorful 3D digital twin now...");
-                    updateGeometry();
-                    showToast('AI Auto-Design Complete');
-                }, 1000);
+                // Remove the "Thinking..." message
+                aiMessages.removeChild(aiMessages.lastChild);
+                
+                // Add the actual AI rationale
+                addAiMessage(aiResult.rationale, false);
+                
+                updateGeometry();
+                showToast('AI Auto-Design Complete');
+            } catch (err) {
+                console.error('AI Generation Error:', err);
+                aiMessages.removeChild(aiMessages.lastChild);
+                addAiMessage("Error connecting to the AI backend. Is the Python server running?", false);
+                showToast('Failed to reach AI Engine.');
             }
         }
 
