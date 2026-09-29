@@ -449,8 +449,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let sunMesh, sunLight, sunPathLine, groundMesh, compassGroup, turfMesh;
     let particlePositions, particleCount = 180;
     let skyUniforms;
+    let cloudGroup = null;
+    let rainSystem = null, rainPositions = null;
+    const rainDropCount = 800;
+    let envMapRenderTarget = null;
+    let aoCasterMesh = null;
     
-    // Dynamic Climate Weather Systems (Snow & Wind)
+    // Dynamic Climate Weather Systems (Snow, Rain & Wind)
     let currentBiome = 'desert';
     let snowSystem = null, snowPositions = null, snowVelocities = null;
     const snowFlakeCount = 650;
@@ -472,16 +477,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf1f5f9);
+        // Atmospheric depth fog — adds huge realism depth cue
+        scene.fog = new THREE.FogExp2(0xd0e8f8, 0.012);
 
         camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         camera.position.set(9.2, 4.8, 12.0);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
         renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // HiDPI support
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.1;
+        renderer.toneMappingExposure = 1.25;  // Slightly brighter, more cinematic
+        renderer.outputEncoding = THREE.sRGBEncoding;
         container.appendChild(renderer.domElement);
 
         controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -614,9 +623,12 @@ document.addEventListener('DOMContentLoaded', () => {
         environmentGroup = new THREE.Group();
         scene.add(environmentGroup);
 
-        // Animated Wind & Snow Climate Particle Systems
+        // Animated Wind, Snow & Rain Climate Particle Systems
         initWindParticles();
         initSnowfallSystem();
+        initRainSystem();
+        initCloudLayer();
+        buildAmbientOcclusionPlane();
 
         updateSunPosition();
         rebuildShelter();
@@ -673,14 +685,53 @@ document.addEventListener('DOMContentLoaded', () => {
             controls.update();
 
             const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
             animateWindParticles(delta);
             animateSnowfall(delta);
+            animateRain(delta);
+            animateClouds(delta);
             if (ceilingFan) ceilingFan.rotation.y += 5 * delta;
 
             // Smooth architectural door hinge rotation
             if (doorPivot) {
                 const targetRot = isDoorOpen ? -Math.PI * 0.48 : 0;
                 doorPivot.rotation.y += (targetRot - doorPivot.rotation.y) * 8 * delta;
+            }
+
+            // Flora Wind Sway Animation
+            if (window.animatedEnvironmentElements) {
+                window.animatedEnvironmentElements.forEach(el => {
+                    const data = el.userData;
+                    const swayFactor = Math.sin(time * data.speed + data.phase);
+                    el.rotation.x = data.origRotX + swayFactor * 0.03;
+                    el.rotation.z = data.origRotZ + Math.cos(time * data.speed + data.phase) * 0.03;
+                });
+            }
+
+            // Ocean Water Ripples Animation
+            if (window.animatedOcean) {
+                const pos = window.animatedOcean.geometry.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const x = pos.getX(i);
+                    const y = pos.getY(i);
+                    const waveHeight = Math.sin(x * 0.5 + time * 2.0) * Math.cos(y * 0.5 + time * 1.5) * 0.3;
+                    pos.setZ(i, waveHeight);
+                }
+                pos.needsUpdate = true;
+                window.animatedOcean.geometry.computeVertexNormals();
+            }
+
+            // Sun pulse / bloom glow animation
+            if (sunMesh) {
+                const pulse = 1.0 + Math.sin(time * 1.4) * 0.06;
+                const flare = sunMesh.children[1];
+                if (flare) flare.scale.set(32 * pulse, 32 * pulse, 1);
+            }
+
+            // Sync fog color to biome sky for seamless depth
+            if (scene.fog && skyUniforms) {
+                const skyHorizon = skyUniforms.bottomColor.value;
+                scene.fog.color.set(skyHorizon);
             }
 
             renderer.render(scene, camera);
@@ -707,31 +758,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildSiteGround() {
-        // Base ground
-        const groundGeo = new THREE.PlaneGeometry(70, 70);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.95 });
+        // Base ground with procedural noise texture
+        const groundGeo = new THREE.PlaneGeometry(70, 70, 8, 8);
+        const groundTex = generateGroundTexture();
+        const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95, metalness: 0.0 });
         groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
 
         // Architectural terrain podium
-        const turfGeo = new THREE.CylinderGeometry(15, 15, 0.15, 48);
-        const turfMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 }); // Sand/Dirt color
+        const turfGeo = new THREE.CylinderGeometry(15, 15, 0.15, 64);
+        const turfMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 });
         turfMesh = new THREE.Mesh(turfGeo, turfMat);
         turfMesh.position.y = 0.075;
         turfMesh.receiveShadow = true;
         scene.add(turfMesh);
 
-        // Site Grid
-        const grid = new THREE.GridHelper(30, 30, 0x94a3b8, 0xcfd8dc);
+        // Site Grid (slightly faded for elegance)
+        const grid = new THREE.GridHelper(30, 30, 0x94a3b8, 0xcbcfd4);
         grid.position.y = 0.16;
+        grid.material.opacity = 0.5;
+        grid.material.transparent = true;
         scene.add(grid);
 
         // Compass Rose on ground
         compassGroup = new THREE.Group();
         scene.add(compassGroup);
         buildCompassRose();
+    }
+
+    // Procedural ground texture (subtle dirt/sand noise)
+    function generateGroundTexture() {
+        const size = 512;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#d1c4a3';
+        ctx.fillRect(0, 0, size, size);
+        const idata = ctx.getImageData(0, 0, size, size);
+        const d = idata.data;
+        for (let i = 0; i < d.length; i += 4) {
+            const n = (Math.random() - 0.5) * 28;
+            d[i]   = Math.min(255, Math.max(0, d[i] + n));
+            d[i+1] = Math.min(255, Math.max(0, d[i+1] + n * 0.9));
+            d[i+2] = Math.min(255, Math.max(0, d[i+2] + n * 0.7));
+        }
+        ctx.putImageData(idata, 0, 0);
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(6, 6);
+        return tex;
+    }
+
+    // Ambient Occlusion contact shadow beneath building
+    function buildAmbientOcclusionPlane() {
+        const aoSize = 14;
+        const aoC = document.createElement('canvas');
+        aoC.width = 256; aoC.height = 256;
+        const aoCtx = aoC.getContext('2d');
+        const aoGrad = aoCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+        aoGrad.addColorStop(0,   'rgba(0,0,0,0.45)');
+        aoGrad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
+        aoGrad.addColorStop(1,   'rgba(0,0,0,0)');
+        aoCtx.fillStyle = aoGrad;
+        aoCtx.ellipse(128, 128, 128, 100, 0, 0, Math.PI * 2);
+        aoCtx.fill();
+        const aoTex = new THREE.CanvasTexture(aoC);
+        const aoGeo = new THREE.PlaneGeometry(aoSize, aoSize * 0.78);
+        const aoMat = new THREE.MeshBasicMaterial({
+            map: aoTex,
+            transparent: true,
+            depthWrite: false,
+            opacity: 0.55
+        });
+        aoCasterMesh = new THREE.Mesh(aoGeo, aoMat);
+        aoCasterMesh.rotation.x = -Math.PI / 2;
+        aoCasterMesh.position.y = 0.17;
+        scene.add(aoCasterMesh);
     }
 
     function buildCompassRose() {
@@ -783,6 +888,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 else obj.material.dispose();
             }
         }
+        window.animatedEnvironmentElements = [];
+        window.animatedOcean = null;
 
         // Shared helper for creating pseudo-random deterministic positions away from center house
         const getSafeScatterPos = (minR, maxR) => {
@@ -796,8 +903,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. DESERT BIOME (Hot & Arid, Thar, Rajasthan, Sahara)
         if (biome === 'desert') {
-            if (groundMesh) groundMesh.material.color.setHex(0xdfaa5b);
+            if (groundMesh) { groundMesh.material.color.setHex(0xdfaa5b); groundMesh.material.needsUpdate = true; }
             if (turfMesh) turfMesh.material.color.setHex(0xc9944a);
+            if (scene.fog) scene.fog.color.setHex(0xfde68a);
             if (skyUniforms) {
                 skyUniforms.topColor.value.setHex(0x38bdf8);
                 skyUniforms.bottomColor.value.setHex(0xfef08a);
@@ -855,6 +963,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 cactusGroup.position.set(pos.x, 0.15, pos.z);
                 cactusGroup.rotation.y = Math.random() * Math.PI * 2;
+                cactusGroup.userData = { origRotX: cactusGroup.rotation.x, origRotZ: cactusGroup.rotation.z, speed: 1.2 + Math.random(), phase: Math.random() * Math.PI * 2 };
+                window.animatedEnvironmentElements.push(cactusGroup);
                 environmentGroup.add(cactusGroup);
             }
 
@@ -888,8 +998,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. SNOW / ALPINE MOUNTAIN BIOME (Shimla, Leh, Kashmir, High Altitudes)
         else if (biome === 'snow') {
-            if (groundMesh) groundMesh.material.color.setHex(0xf8fafc);
+            if (groundMesh) { groundMesh.material.color.setHex(0xf8fafc); groundMesh.material.needsUpdate = true; }
             if (turfMesh) turfMesh.material.color.setHex(0xe2e8f0);
+            if (scene.fog) scene.fog.color.setHex(0xe0f0ff);
             if (skyUniforms) {
                 skyUniforms.topColor.value.setHex(0x0284c7);
                 skyUniforms.bottomColor.value.setHex(0xf0f9ff);
@@ -959,6 +1070,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 pineGroup.position.set(pos.x, 0.15, pos.z);
+                pineGroup.userData = { origRotX: pineGroup.rotation.x, origRotZ: pineGroup.rotation.z, speed: 0.8 + Math.random(), phase: Math.random() * Math.PI * 2 };
+                window.animatedEnvironmentElements.push(pineGroup);
                 environmentGroup.add(pineGroup);
             }
 
@@ -978,15 +1091,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. TROPICAL / COASTAL (Chennai, Kerala, Monsoon, Coastal Plains)
         else if (biome === 'tropical') {
-            if (groundMesh) groundMesh.material.color.setHex(0xfef08a);
+            if (groundMesh) { groundMesh.material.color.setHex(0x86c571); groundMesh.material.needsUpdate = true; }
             if (turfMesh) turfMesh.material.color.setHex(0x4ade80);
+            if (scene.fog) scene.fog.color.setHex(0xb2f0c0);
             if (skyUniforms) {
                 skyUniforms.topColor.value.setHex(0x0ea5e9);
                 skyUniforms.bottomColor.value.setHex(0xcffafe);
             }
 
             // A. Distant Shimmering Ocean Horizon Plane
-            const oceanGeo = new THREE.PlaneGeometry(80, 40);
+            const oceanGeo = new THREE.PlaneGeometry(80, 40, 32, 16);
             const oceanMat = new THREE.MeshStandardMaterial({
                 color: 0x0284c7,
                 roughness: 0.15,
@@ -997,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ocean = new THREE.Mesh(oceanGeo, oceanMat);
             ocean.rotation.x = -Math.PI / 2;
             ocean.position.set(0, 0.05, -30);
+            window.animatedOcean = ocean;
             environmentGroup.add(ocean);
 
             // B. Leaning Coconut Palm Trees
@@ -1031,6 +1146,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Gentle realistic coastal lean
                 palmGroup.rotation.z = (Math.random() - 0.5) * 0.2;
                 palmGroup.rotation.x = (Math.random() - 0.5) * 0.2;
+                palmGroup.userData = { origRotX: palmGroup.rotation.x, origRotZ: palmGroup.rotation.z, speed: 1.5 + Math.random(), phase: Math.random() * Math.PI * 2 };
+                window.animatedEnvironmentElements.push(palmGroup);
                 environmentGroup.add(palmGroup);
             }
 
@@ -1047,8 +1164,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. FOREST / TEMPERATE / STANDARD BIOME (Nagpur, Hills, Valleys, Standard)
         else {
-            if (groundMesh) groundMesh.material.color.setHex(0x2d6a4f);
+            if (groundMesh) { groundMesh.material.color.setHex(0x3d7a50); groundMesh.material.needsUpdate = true; }
             if (turfMesh) turfMesh.material.color.setHex(0x3a5a40);
+            if (scene.fog) scene.fog.color.setHex(0xd0e8f0);
             if (skyUniforms) {
                 skyUniforms.topColor.value.setHex(0x2563eb);
                 skyUniforms.bottomColor.value.setHex(0xdbeafe);
@@ -1090,6 +1208,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 treeGroup.add(subSphere);
 
                 treeGroup.position.set(pos.x, 0.15, pos.z);
+                treeGroup.userData = { origRotX: treeGroup.rotation.x, origRotZ: treeGroup.rotation.z, speed: 1.0 + Math.random(), phase: Math.random() * Math.PI * 2 };
+                window.animatedEnvironmentElements.push(treeGroup);
                 environmentGroup.add(treeGroup);
             }
 
@@ -1191,6 +1311,93 @@ document.addEventListener('DOMContentLoaded', () => {
             if (positions[i * 3 + 2] < -16) positions[i * 3 + 2] = 16;
         }
         particleSystem.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Cloud Layer — animated procedural cloud sprites drifting across the sky
+    function initCloudLayer() {
+        cloudGroup = new THREE.Group();
+        scene.add(cloudGroup);
+        const numClouds = 12;
+        for (let ci = 0; ci < numClouds; ci++) {
+            const cc = document.createElement('canvas');
+            cc.width = 256; cc.height = 128;
+            const cctx = cc.getContext('2d');
+            // Draw soft multi-blob cloud shape
+            const blobs = 5 + Math.floor(Math.random() * 4);
+            for (let b = 0; b < blobs; b++) {
+                const bx = 30 + Math.random() * 180;
+                const by = 40 + Math.random() * 48;
+                const br = 28 + Math.random() * 38;
+                const bgrad = cctx.createRadialGradient(bx, by, 0, bx, by, br);
+                bgrad.addColorStop(0,   'rgba(255,255,255,0.88)');
+                bgrad.addColorStop(0.5, 'rgba(240,248,255,0.48)');
+                bgrad.addColorStop(1,   'rgba(200,230,255,0)');
+                cctx.fillStyle = bgrad;
+                cctx.beginPath();
+                cctx.ellipse(bx, by, br * 1.6, br, 0, 0, Math.PI * 2);
+                cctx.fill();
+            }
+            const cTex = new THREE.CanvasTexture(cc);
+            const cMat = new THREE.SpriteMaterial({ map: cTex, transparent: true, opacity: 0.75, depthWrite: false });
+            const cloud = new THREE.Sprite(cMat);
+            const scale = 18 + Math.random() * 22;
+            cloud.scale.set(scale, scale * 0.45, 1);
+            cloud.position.set(
+                (Math.random() - 0.5) * 180,
+                55 + Math.random() * 25,
+                (Math.random() - 0.5) * 180
+            );
+            cloud.userData.speed = 0.8 + Math.random() * 0.6;
+            cloudGroup.add(cloud);
+        }
+    }
+
+    function animateClouds(delta) {
+        if (!cloudGroup) return;
+        cloudGroup.children.forEach(cloud => {
+            cloud.position.x += cloud.userData.speed * delta * 0.8;
+            if (cloud.position.x > 120) cloud.position.x = -120;
+        });
+    }
+
+    // Tropical Rain Particle System
+    function initRainSystem() {
+        const rGeo = new THREE.BufferGeometry();
+        rainPositions = new Float32Array(rainDropCount * 3);
+        for (let i = 0; i < rainDropCount; i++) {
+            rainPositions[i * 3]     = (Math.random() - 0.5) * 32;
+            rainPositions[i * 3 + 1] = Math.random() * 18;
+            rainPositions[i * 3 + 2] = (Math.random() - 0.5) * 32;
+        }
+        rGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+        const rMat = new THREE.PointsMaterial({
+            color: 0x9ecae1,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.65,
+            depthWrite: false
+        });
+        rainSystem = new THREE.Points(rGeo, rMat);
+        rainSystem.visible = false;
+        scene.add(rainSystem);
+    }
+
+    function animateRain(delta) {
+        if (!rainSystem) return;
+        const isRaining = (currentBiome === 'tropical');
+        rainSystem.visible = isRaining;
+        if (!isRaining) return;
+        const pos = rainSystem.geometry.attributes.position.array;
+        for (let i = 0; i < rainDropCount; i++) {
+            pos[i * 3 + 1] -= 12 * delta;  // Fast downward drop
+            pos[i * 3]     += 1.2 * delta;  // Slight sideways drift
+            if (pos[i * 3 + 1] < 0) {
+                pos[i * 3 + 1] = 16 + Math.random() * 4;
+                pos[i * 3]     = (Math.random() - 0.5) * 32;
+                pos[i * 3 + 2] = (Math.random() - 0.5) * 32;
+            }
+        }
+        rainSystem.geometry.attributes.position.needsUpdate = true;
     }
 
     // Realistic Falling Snow & Ice Crystals System for Alpine / Cold Climate
@@ -1485,39 +1692,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 wallMat = new THREE.MeshStandardMaterial({
                     map: getRammedEarthTexture(),
                     roughness: 0.92,
-                    metalness: 0.05
+                    metalness: 0.05,
+                    envMapIntensity: 0.4
                 });
             } else if (matKey === 'timber_frame') {
                 wallMat = new THREE.MeshStandardMaterial({
                     map: getTimberPlankTexture(),
                     roughness: 0.75,
-                    metalness: 0.02
+                    metalness: 0.02,
+                    envMapIntensity: 0.3
                 });
             } else if (matKey === 'brick_cavity') {
                 wallMat = new THREE.MeshStandardMaterial({
                     map: getBrickTexture(),
                     roughness: 0.88,
-                    metalness: 0.02
+                    metalness: 0.02,
+                    envMapIntensity: 0.3
                 });
             } else if (matKey === 'aerated_concrete') {
                 wallMat = new THREE.MeshStandardMaterial({
                     map: getConcreteTexture(),
                     roughness: 0.88,
-                    metalness: 0.02
+                    metalness: 0.02,
+                    envMapIntensity: 0.3
                 });
             } else if (matKey === 'pcm_biowax') {
                 wallMat = new THREE.MeshPhysicalMaterial({
                     color: 0x0284c7,
                     roughness: 0.15,
                     metalness: 0.25,
-                    clearcoat: 0.8,
-                    clearcoatRoughness: 0.1
+                    clearcoat: 0.95,
+                    clearcoatRoughness: 0.05,
+                    envMapIntensity: 0.8
                 });
             } else {
                 wallMat = new THREE.MeshStandardMaterial({
                     color: 0x94a3b8,
                     roughness: 0.35,
-                    metalness: 0.85
+                    metalness: 0.85,
+                    envMapIntensity: 1.0
                 });
             }
 
@@ -1536,16 +1749,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 wallMat: wallMat,
                 roofMat: roofMat,
-                glassMat: new THREE.MeshStandardMaterial({
-                    color: 0x93c5fd,
+                // Enhanced glass: MeshPhysicalMaterial with transmission for realistic window panes
+                glassMat: new THREE.MeshPhysicalMaterial({
+                    color: 0xbae6fd,
                     transparent: true,
-                    opacity: 0.20,
-                    roughness: 0.05,
-                    metalness: 0.15
+                    opacity: 0.22,
+                    roughness: 0.04,
+                    metalness: 0.0,
+                    transmission: 0.85,
+                    thickness: 0.04,
+                    ior: 1.45,
+                    envMapIntensity: 1.2,
+                    reflectivity: 0.5,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.0
                 }),
                 slabMat: new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.85, metalness: 0.05 }),
-                doorMat: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.55 }),
-                frameMat: new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.45, metalness: 0.3 })
+                doorMat: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.45, metalness: 0.05, envMapIntensity: 0.5 }),
+                frameMat: new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.35, metalness: 0.55, envMapIntensity: 0.7 })
             };
         }
     }
